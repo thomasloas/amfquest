@@ -1,0 +1,127 @@
+{
+  "project_name": "AMFQUEST",
+  "theme_and_archetype": {
+    "theme": "LIGHT",
+    "archetype": "4 (Swiss & High-Contrast)",
+    "description": "Authority, clarity, and function-first. A blend of Bloomberg-esque institutional seriousness and modern, frictionless EdTech. Focus on high contrast to prevent eye strain during long QCM sessions.",
+    "vibe": "Sober, trustworthy, corporate finance, but highly modern and distinct from 'AI slop' gradients."
+  },
+  "typography": {
+    "description": "High-contrast pairing. The heading font delivers a strong, editorial, financial report feel. The body font is purely technical, clean, and optimized for dense text reading (crucial for QCMs).",
+    "fonts": [
+      {
+        "role": "heading",
+        "family": "Chivo",
+        "source": "Google Fonts",
+        "weights": ["300", "400", "700", "900"],
+        "css_class": "font-sans",
+        "usage": "Use for all headings. Never center by default. Use tracking-tight."
+      },
+      {
+        "role": "body",
+        "family": "IBM Plex Sans",
+        "source": "Google Fonts",
+        "weights": ["400", "500", "600"],
+        "css_class": "font-mono",
+        "usage": "Use for body copy, QCM questions, and answers."
+      }
+    ],
+    "hierarchy_rules": {
+      "h1": "text-5xl sm:text-6xl tracking-tighter leading-none font-black text-slate-900",
+      "h2": "text-3xl sm:text-4xl tracking-tight leading-tight font-bold text-slate-900",
+      "h3": "text-xl sm:text-2xl tracking-tight leading-snug font-bold text-slate-800",
+      "body": "text-base leading-relaxed text-slate-600",
+      "overline": "uppercase tracking-[0.2em] text-xs font-bold text-[#002FA7]",
+      "labels": "text-sm font-semibold text-slate-500"
+    }
+  },
+  "colors": {
+    "palette": {
+      "background": "#FAFAFA",
+      "surface": "#FFFFFF",
+      "surface_alt": "#F4F4F5",
+      "border": "#E4E4E7",
+      "border_focus": "#002FA7",
+      "text_primary": "#0A0A0A",
+      "text_secondary": "#52525B",
+      "brand_primary": "#002FA7",
+      "brand_primary_hover": "#002480",
+      "brand_accent": "#E63946",
+      "success": "#059669",
+      "error": "#DC2626",
+      "warning": "#D97706"
+    },
+    "rules": {
+      "gradients": "BANNED. Use flat colors only. NO purple/white gradients. NO teal.",
+      "ctas": "Primary CTAs use brand_primary (#002FA7) with white text. Hover states should darken slightly.",
+      "background_sections": "Use Stark White for reading areas (QCM). Use #0A0A0A for the Footer or 'Impact' sections, keeping text stark white for extreme contrast."
+    }
+  },
+  "spacing_and_layout": {
+    "grid_system": {
+      "marketing": "MODE A: The Tetris Grid. Asymmetric. gap-8 to gap-12. Large typography offsets. Never center-everything.",
+      "dashboard": "MODE B: The Control Room Grid. gap-4. Dense, actionable. Every pixel utilized. Built for performance."
+    },
+    "spacing_scale": "Generous on marketing (py-24, py-32). Tight on Dashboard (p-6, gap-4). Container inner padding must be present on bordered cards.",
+    "border_radius": "rounded-none or rounded-sm (max 4px). Sharp, institutional, no playful rounded corners.",
+    "alignment": "Strictly Left-Aligned. Optical alignment over geometrical."
+  },
+  "surface_strategies": {
+    "cards": "Grid Borders (The 'Technical' Look). Use pure white backgrounds with 1px solid border (#E4E4E7). On hover, translate-y-[-2px] with a sharp shadow (shadow-sm) and change border to #002FA7.",
+    "headers": "Solid background. border-b border-zinc-200. No transparent floating headers. Maintain high contrast.",
+    "inputs": "Shadcn defaults but override border-radius to rounded-none. Focus states must use a 2px solid ring of #002FA7."
+  },
+  "components": {
+    "qcm_card": {
+      "default": "border border-zinc-200 bg-white p-6 cursor-pointer hover:border-[#002FA7] transition-colors relative",
+      "selected": "border-2 border-[#002FA7] bg-blue-50/50",
+      "correct": "border-2 border-green-600 bg-green-50",
+      "incorrect": "border-2 border-red-600 bg-red-50"
+    },
+    "progress_bar": "Flat height (h-2), rounded-none, using brand_primary (#002FA7) for progress against a zinc-200 track.",
+    "buttons": {
+      "primary": "bg-[#002FA7] text-white rounded-none px-6 py-3 font-bold hover:bg-[#002480] transition-colors",
+      "secondary": "bg-transparent border border-zinc-300 text-zinc-900 rounded-none px-6 py-3 font-bold hover:bg-zinc-100 transition-colors"
+    }
+  },
+  "media": {
+    "images": [
+      {
+        "category": "hero",
+        "url": "https://images.unsplash.com/photo-1594655151525-cc979fc9bf8b?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NzV8MHwxfHNlYXJjaHwyfHxmaW5hbmNpYWwlMjBkaXN0cmljdCUyMGFyY2hpdGVjdHVyZXxlbnwwfHx8fDE3ODEyNDQxODR8MA&ixlib=rb-4.1.0&q=85",
+        "description": "High contrast black and white architectural shot for the landing page hero background. Apply a light white/gray overlay (bg-white/80) so text is highly readable.",
+        "usage_instructions": "Use as a background element with high opacity overlay or side-by-side in a bento grid."
+      },
+      {
+        "category": "study_professional",
+        "url": "https://images.unsplash.com/photo-1499914485622-a88fac536970?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2OTV8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBzdHVkeWluZyUyMGxhcHRvcHxlbnwwfHx8fDE3ODEyNDQxODl8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Professional at laptop, for 'How it works' or 'Dashboard preview' sections."
+      },
+      {
+        "category": "architecture_blue",
+        "url": "https://images.pexels.com/photos/33279640/pexels-photo-33279640.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Vibrant blue skyscraper reflection. Use for 'Why choose us' section to break up the monochrome."
+      }
+    ],
+    "icons": {
+      "library": "lucide-react",
+      "style": "stroke-width: 1.5, absolute geometric feel. Avoid playful/rounded icons."
+    }
+  },
+  "motion_and_interactions": {
+    "hover_states": "Crisp and immediate. No floaty easing. Use transition-all duration-150 ease-out.",
+    "page_transitions": "Minimal. Fade-in on load (opacity 0 to 1).",
+    "qcm_feedback": "Immediate color change (green/red) on validation. Add subtle shake for incorrect."
+  },
+  "testing_attributes": {
+    "rule": "All interactive and key informational elements MUST include a data-testid attribute.",
+    "examples": ["data-testid='login-button'", "data-testid='qcm-option-a'", "data-testid='submit-qcm-button'", "data-testid='score-display'"]
+  },
+  "instructions_to_main_agent": {
+    "1": "Use pure Tailwind and raw HTML tags for marketing sections (landing page). Use pure asymmetry, heavy padding, and large font weights.",
+    "2": "For the dashboard/QCM platform, switch to Shadcn UI components but override border radii to `rounded-none` or `rounded-sm`. Ensure extreme data density and clarity.",
+    "3": "The QCM engine must be robust: 120 questions for the mock exam mode. Include a timer and calculate the 80% passing threshold.",
+    "4": "Do NOT use AI/generative gradients, blob shapes, or purple/teal colors. Stick to the Klein Blue (#002FA7) and Stark White/Zinc.",
+    "5": "Add specific `data-testid` to everything."
+  }
+}
