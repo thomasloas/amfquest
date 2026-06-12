@@ -1,54 +1,48 @@
-import { useEffect } from "react";
 import "@/App.css";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import axios from "axios";
-import { HOME } from "@/constants/testIds";
+import { Toaster } from "@/components/ui/sonner";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+import { AuthProvider } from "@/contexts/AuthContext";
+import ProtectedRoute from "@/components/ProtectedRoute";
+import PublicLayout from "@/components/PublicLayout";
 
-const Home = () => {
-  const helloWorldApi = async () => {
-    try {
-      const response = await axios.get(`${API}/`);
-      console.log(response.data.message);
-    } catch (e) {
-      console.error(e, `errored out requesting / api`);
-    }
-  };
-
-  useEffect(() => {
-    helloWorldApi();
-  }, []);
-
-  return (
-    <div>
-      <header className="App-header">
-        <a
-          data-testid={HOME.emergentLink}
-          className="App-link"
-          href="https://emergent.sh"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4" />
-        </a>
-        <p className="mt-5">Building something incredible ~!</p>
-      </header>
-    </div>
-  );
-};
+import Landing from "@/pages/Landing";
+import Offre from "@/pages/Offre";
+import Themes from "@/pages/Themes";
+import Contact from "@/pages/Contact";
+import Login from "@/pages/Login";
+import Register from "@/pages/Register";
+import Dashboard from "@/pages/Dashboard";
+import Entrainement from "@/pages/Entrainement";
+import ExamenBlanc from "@/pages/ExamenBlanc";
+import Quiz from "@/pages/Quiz";
+import Resultats from "@/pages/Resultats";
+import Historique from "@/pages/Historique";
 
 function App() {
   return (
     <div className="App">
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Home />}>
-            <Route index element={<Home />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
+      <AuthProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route element={<PublicLayout />}>
+              <Route path="/" element={<Landing />} />
+              <Route path="/offre" element={<Offre />} />
+              <Route path="/themes" element={<Themes />} />
+              <Route path="/contact" element={<Contact />} />
+              <Route path="/connexion" element={<Login />} />
+              <Route path="/inscription" element={<Register />} />
+              <Route path="/tableau-de-bord" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/entrainement" element={<ProtectedRoute><Entrainement /></ProtectedRoute>} />
+              <Route path="/examen-blanc" element={<ProtectedRoute><ExamenBlanc /></ProtectedRoute>} />
+              <Route path="/quiz/:sessionId" element={<ProtectedRoute><Quiz /></ProtectedRoute>} />
+              <Route path="/resultats/:sessionId" element={<ProtectedRoute><Resultats /></ProtectedRoute>} />
+              <Route path="/historique" element={<ProtectedRoute><Historique /></ProtectedRoute>} />
+            </Route>
+          </Routes>
+        </BrowserRouter>
+        <Toaster position="top-right" richColors />
+      </AuthProvider>
     </div>
   );
 }

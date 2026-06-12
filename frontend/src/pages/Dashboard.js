@@ -1,0 +1,119 @@
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import api from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
+import { ArrowRight, Award, BookOpen, Clock, Timer } from "lucide-react";
+
+export default function Dashboard() {
+  const { user } = useAuth();
+  const [stats, setStats] = useState(null);
+  const [cats, setCats] = useState([]);
+
+  useEffect(() => {
+    api.get("/stats").then((r) => setStats(r.data));
+    api.get("/categories").then((r) => setCats(r.data));
+  }, []);
+
+  return (
+    <div data-testid="dashboard-page" className="max-w-7xl mx-auto px-6 lg:px-10 py-14">
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+        <div>
+          <div className="overline mb-3">VOTRE ESPACE</div>
+          <h1 className="font-heading text-4xl tracking-tighter font-black">
+            Bonjour, {user?.name?.split(" ")[0]}.
+          </h1>
+          <p className="text-zinc-600 mt-2">Voici votre progression et vos prochaines sessions.</p>
+        </div>
+        <div className="flex gap-3 flex-wrap">
+          <Link to="/entrainement" data-testid="cta-start-training" className="btn-primary">
+            <BookOpen size={16} /> Nouvel entraînement
+          </Link>
+          <Link to="/examen-blanc" data-testid="cta-start-exam" className="btn-secondary">
+            <Timer size={16} /> Examen blanc
+          </Link>
+        </div>
+      </div>
+
+      <div className="mt-10 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard label="Sessions terminées" value={stats?.total_sessions ?? "—"} testid="stat-sessions" />
+        <StatCard label="Questions traitées" value={stats?.total_questions ?? "—"} testid="stat-questions" />
+        <StatCard label="Bonnes réponses" value={stats?.total_correct ?? "—"} testid="stat-correct" />
+        <StatCard label="Taux global" value={stats ? `${stats.global_percent}%` : "—"} testid="stat-percent" highlight />
+      </div>
+
+      <div className="mt-12 grid lg:grid-cols-12 gap-8">
+        <div className="lg:col-span-7">
+          <div className="overline mb-4">DERNIÈRES SESSIONS</div>
+          <div className="border border-zinc-200 bg-white">
+            {(stats?.last_sessions ?? []).length === 0 ? (
+              <div className="p-8 text-center text-sm text-zinc-500">
+                Vous n'avez pas encore terminé de session. <Link to="/entrainement" className="text-[#002FA7] font-semibold">Commencer maintenant →</Link>
+              </div>
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="bg-zinc-50 text-zinc-500">
+                  <tr className="text-left">
+                    <th className="p-3 font-semibold">MODE</th>
+                    <th className="p-3 font-semibold">SCORE</th>
+                    <th className="p-3 font-semibold">DATE</th>
+                    <th className="p-3 font-semibold"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stats.last_sessions.map((s) => (
+                    <tr key={s.id} className="border-t border-zinc-200" data-testid={`session-row-${s.id}`}>
+                      <td className="p-3">
+                        <span className={`inline-block px-2 py-0.5 text-xs font-bold ${s.mode === "exam" ? "bg-[#002FA7] text-white" : "bg-zinc-100 text-zinc-700"}`}>
+                          {s.mode === "exam" ? "EXAMEN" : "ENTRAÎNEMENT"}
+                        </span>
+                      </td>
+                      <td className="p-3 font-mono-ibm font-bold">{s.score}/{s.total} · {s.percent}%</td>
+                      <td className="p-3 text-zinc-500">{new Date(s.finished_at).toLocaleDateString("fr-FR")}</td>
+                      <td className="p-3 text-right">
+                        <Link to={`/resultats/${s.id}`} className="text-[#002FA7] font-semibold inline-flex items-center gap-1">
+                          Détails <ArrowRight size={14} />
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+          <Link to="/historique" data-testid="link-history" className="mt-4 inline-block text-sm text-[#002FA7] font-semibold">
+            Voir tout l'historique →
+          </Link>
+        </div>
+
+        <div className="lg:col-span-5">
+          <div className="overline mb-4">DÉMARRER PAR THÈME</div>
+          <div className="border border-zinc-200 bg-white max-h-[460px] overflow-y-auto">
+            {cats.map((c) => (
+              <Link
+                key={c.key}
+                to={`/entrainement?theme=${c.key}`}
+                data-testid={`dashboard-theme-${c.key}`}
+                className="flex items-center justify-between p-4 border-b border-zinc-100 hover:bg-zinc-50"
+              >
+                <div className="flex items-center gap-3">
+                  <Award size={16} className="text-[#002FA7]" />
+                  <span className="text-sm font-semibold">{c.title}</span>
+                </div>
+                <span className="text-xs text-zinc-500">{c.question_count}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StatCard({ label, value, testid, highlight }) {
+  return (
+    <div data-testid={testid} className={`border ${highlight ? "border-[#002FA7] border-2 bg-[#EFF3FF]" : "border-zinc-200 bg-white"} p-5`}>
+      <div className="overline text-zinc-500">{label.toUpperCase()}</div>
+      <div className="font-heading text-3xl font-black tracking-tighter mt-2">{value}</div>
+    </div>
+  );
+}
