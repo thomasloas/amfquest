@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api, { formatApiErrorDetail } from "@/lib/api";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, Clock } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Clock, X } from "lucide-react";
 
 const LETTERS = ["A", "B", "C", "D", "E"];
 
@@ -12,18 +12,14 @@ export default function Quiz() {
   const [session, setSession] = useState(null);
   const [idx, setIdx] = useState(0);
   const [answers, setAnswers] = useState({});
+  const [revealed, setRevealed] = useState({}); // {questionId: {correct_index, explanation, source}}
   const [submitting, setSubmitting] = useState(false);
   const [remaining, setRemaining] = useState(null);
   const startRef = useRef(null);
 
   useEffect(() => {
     api.get(`/sessions/${sessionId}`).then(({ data }) => {
-      setSession({
-        ...data,
-        questions: data.questions.map((q) => ({
-          id: q.id, theme: q.theme, text: q.text, options: q.options,
-        })),
-      });
+      setSession(data);
       setAnswers(data.answers || {});
       startRef.current = new Date(data.started_at).getTime();
       if (data.duration_seconds) {
@@ -50,14 +46,12 @@ export default function Quiz() {
   useEffect(() => {
     if (remaining == null) return;
     if (remaining <= 0) { finishExam(); return; }
-    const t = setInterval(() => {
-      setRemaining((r) => (r == null ? null : Math.max(0, r - 1)));
-    }, 1000);
+    const t = setInterval(() => setRemaining((r) => (r == null ? null : Math.max(0, r - 1))), 1000);
     return () => clearInterval(t);
   }, [remaining, finishExam]);
 
   if (!session) {
-    return <div className="min-h-[60vh] flex items-center justify-center"><div className="overline">Chargement de la session…</div></div>;
+    return <div className="min-h-[60vh] flex items-center justify-center"><div className="overline">Chargement…</div></div>;
   }
 
   const q = session.questions[idx];
@@ -65,16 +59,26 @@ export default function Quiz() {
   const total = session.questions.length;
   const answered = Object.keys(answers).length;
   const isExam = session.mode === "exam";
+  const reveal = revealed[q.id];
 
   const pick = async (i) => {
+    if (selected !== undefined && !isExam) return; // training: lock after first pick
     setAnswers({ ...answers, [q.id]: i });
-    try { await api.post(`/sessions/${sessionId}/answer`, { question_id: q.id, selected_index: i }); } catch (e) {}
+    try {
+      await api.post(`/sessions/${sessionId}/answer`, { question_id: q.id, selected_index: i });
+      if (!isExam) {
+        // Fetch correction
+        try {
+          const { data } = await api.post(`/sessions/${sessionId}/finish-question`, { question_id: q.id });
+          setRevealed({ ...revealed, [q.id]: data });
+        } catch (_) { /* fallback: dont reveal */ }
+      }
+    } catch (_) {}
   };
 
   const fmtTime = (s) => {
     if (s == null) return "";
-    const m = Math.floor(s / 60);
-    const sec = Math.floor(s % 60);
+    const m = Math.floor(s / 60), sec = Math.floor(s % 60);
     return `${m}:${String(sec).padStart(2, "0")}`;
   };
 
@@ -97,21 +101,41 @@ export default function Quiz() {
       </div>
 
       <div className="border border-zinc-200 bg-white p-8" data-testid={`question-${idx}`}>
-        <div className="overline text-zinc-500 mb-3">{q.theme.toUpperCase().replace(/-/g, " ")}</div>
+        <div className="overline text-zinc-500 mb-3">{q.theme.replace(/-/g, " ").toUpperCase()}</div>
         <h2 className="font-heading text-2xl font-bold tracking-tight leading-snug">{q.text}</h2>
         <div className="mt-8 space-y-3">
-          {q.options.map((opt, i) => (
-            <button
-              key={i}
-              data-testid={`option-${i}`}
-              onClick={() => pick(i)}
-              className={`qcm-option ${selected === i ? "selected" : ""}`}
-            >
-              <span className="option-letter">{LETTERS[i]}</span>
-              <span className="font-mono-ibm">{opt}</span>
-            </button>
-          ))}
+          {q.options.map((opt, i) => {
+            let cls = "qcm-option";
+            if (reveal) {
+              if (i === reveal.correct_index) cls += " correct";
+              else if (i === selected) cls += " incorrect";
+            } else if (selected === i) cls += " selected";
+            return (
+              <button
+                key={i}
+                data-testid={`option-${i}`}
+                onClick={() => pick(i)}
+                disabled={!!reveal}
+                className={cls}
+              >
+                <span className="option-letter">{LETTERS[i]}</span>
+                <span className="font-mono-ibm">{opt}</span>
+                {reveal && i === reveal.correct_index && <Check size={18} className="text-green-700 ml-auto" />}
+                {reveal && i === selected && i !== reveal.correct_index && <X size={18} className="text-red-700 ml-auto" />}
+              </button>
+            );
+          })}
         </div>
+
+        {reveal && (
+          <div className="mt-6 border-l-2 border-[#002FA7] pl-4 animate-fade-in" data-testid="reveal-block">
+            <div className="overline text-[#002FA7]">EXPLICATION</div>
+            <p className="text-sm text-zinc-700 mt-1 leading-relaxed">{reveal.explanation}</p>
+            {reveal.source && (
+              <p className="text-xs text-zinc-500 mt-3 font-mono-ibm">Source : {reveal.source}</p>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex items-center justify-between mt-6">

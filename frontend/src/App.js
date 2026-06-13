@@ -18,6 +18,8 @@ import ExamenBlanc from "@/pages/ExamenBlanc";
 import Quiz from "@/pages/Quiz";
 import Resultats from "@/pages/Resultats";
 import Historique from "@/pages/Historique";
+import Abonnement from "@/pages/Abonnement";
+import PaiementSucces from "@/pages/PaiementSucces";
 
 function App() {
   return (
@@ -38,6 +40,8 @@ function App() {
               <Route path="/quiz/:sessionId" element={<ProtectedRoute><Quiz /></ProtectedRoute>} />
               <Route path="/resultats/:sessionId" element={<ProtectedRoute><Resultats /></ProtectedRoute>} />
               <Route path="/historique" element={<ProtectedRoute><Historique /></ProtectedRoute>} />
+              <Route path="/abonnement" element={<ProtectedRoute><Abonnement /></ProtectedRoute>} />
+              <Route path="/paiement-succes" element={<ProtectedRoute><PaiementSucces /></ProtectedRoute>} />
             </Route>
           </Routes>
         </BrowserRouter>

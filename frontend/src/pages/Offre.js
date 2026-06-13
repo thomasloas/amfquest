@@ -4,29 +4,44 @@ import { Check } from "lucide-react";
 export default function Offre() {
   const tiers = [
     {
-      name: "Découverte",
+      name: "Gratuit",
       price: "0€",
-      desc: "Pour vous faire une idée.",
-      features: ["20 questions par thème", "Mode entraînement", "Corrections détaillées", "Suivi basique"],
+      desc: "Inscription en 30 secondes, sans carte bancaire.",
+      features: [
+        "Accès à 50 questions sur 2 thèmes",
+        "Mode entraînement avec correction immédiate",
+        "Tableau de bord et historique",
+      ],
       cta: "Créer un compte",
       to: "/inscription",
       featured: false,
     },
     {
-      name: "Préparation",
-      price: "29€",
-      suffix: "/mois",
-      desc: "Recommandé pour passer l'examen.",
-      features: ["Banque complète de questions", "Examens blancs illimités", "Tableau de bord avancé", "Statistiques par thème", "Mode révision ciblée"],
-      cta: "Démarrer",
-      to: "/inscription",
+      name: "Premium",
+      price: "19,99€",
+      suffix: "/ 30 jours",
+      desc: "Accès illimité à toute la banque AMF.",
+      features: [
+        "2 389 questions · 15 thèmes officiels",
+        "Examen blanc chronométré 120 questions",
+        "Explications détaillées et sources",
+        "Statistiques avancées de progression",
+        "Aucune reconduction automatique",
+      ],
+      cta: "S'abonner",
+      to: "/abonnement",
       featured: true,
     },
     {
       name: "Entreprise",
       price: "Sur devis",
       desc: "Pour les équipes et CCI.",
-      features: ["Gestion multi-utilisateurs", "Reporting RH", "Personnalisation", "Support dédié"],
+      features: [
+        "Gestion multi-utilisateurs",
+        "Reporting RH",
+        "Personnalisation du contenu",
+        "Support dédié",
+      ],
       cta: "Nous contacter",
       to: "/contact",
       featured: false,
@@ -39,16 +54,16 @@ export default function Offre() {
       <h1 className="font-heading text-5xl sm:text-6xl tracking-tighter font-black text-zinc-900 max-w-3xl leading-[1]">
         Choisissez la formule adaptée à votre objectif.
       </h1>
-      <p className="text-zinc-600 mt-6 max-w-2xl">Sans engagement, résiliable à tout moment. Tous les tarifs sont TTC.</p>
+      <p className="text-zinc-600 mt-6 max-w-2xl">Paiement sécurisé par Stripe. Tous les tarifs sont TTC.</p>
 
       <div className="mt-16 grid lg:grid-cols-3 gap-6">
-        {tiers.map((t, i) => (
+        {tiers.map((t) => (
           <div
-            key={i}
+            key={t.name}
             data-testid={`tier-${t.name.toLowerCase()}`}
-            className={`bg-white border ${t.featured ? "border-[#002FA7] border-2" : "border-zinc-200"} p-8 flex flex-col`}
+            className={`bg-white border ${t.featured ? "border-[#002FA7] border-2" : "border-zinc-200"} p-8 flex flex-col relative`}
           >
-            {t.featured && <div className="overline mb-3 text-[#002FA7]">RECOMMANDÉ</div>}
+            {t.featured && <div className="absolute -top-3 left-8 bg-[#002FA7] text-white text-xs font-bold tracking-wider px-3 py-1">RECOMMANDÉ</div>}
             <h3 className="font-heading text-2xl font-bold tracking-tight">{t.name}</h3>
             <div className="mt-6 flex items-end gap-2">
               <div className="font-heading text-5xl font-black tracking-tighter">{t.price}</div>
@@ -58,7 +73,7 @@ export default function Offre() {
             <ul className="mt-8 space-y-3 flex-1">
               {t.features.map((f) => (
                 <li key={f} className="flex items-start gap-3 text-sm text-zinc-700">
-                  <Check size={16} className="text-[#002FA7] mt-0.5 flex-shrink-0" />
+                  <Check size={16} className={`mt-0.5 flex-shrink-0 ${t.featured ? "text-[#002FA7]" : "text-zinc-500"}`} />
                   <span>{f}</span>
                 </li>
               ))}

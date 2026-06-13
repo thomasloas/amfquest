@@ -1,206 +1,79 @@
-"""AMF QCM seed data – curated questions across the 12 official AMF themes."""
+"""Catégories AMF dérivées du CSV officiel + politique freemium.
 
-AMF_CATEGORIES = [
-    {"key": "reglementation", "title": "Réglementation et déontologie", "description": "Cadre légal, AMF, ACPR, MIF 2, abus de marché."},
-    {"key": "lutte-blanchiment", "title": "Lutte anti-blanchiment et financement du terrorisme", "description": "TRACFIN, KYC, déclarations de soupçon."},
-    {"key": "deontologie", "title": "Déontologie et conformité", "description": "Conflits d'intérêts, primauté du client, RCSI/RCCI."},
-    {"key": "instruments-financiers", "title": "Instruments financiers", "description": "Actions, obligations, OPCVM, dérivés."},
-    {"key": "gestion-collective", "title": "Gestion collective", "description": "OPCVM, FIA, sociétés de gestion."},
-    {"key": "negociation", "title": "Négociation post-marché", "description": "Plateformes de négociation, règlement-livraison."},
-    {"key": "fiscalite", "title": "Fiscalité de l'épargne", "description": "PEA, assurance-vie, prélèvements."},
-    {"key": "demarchage", "title": "Démarchage et vente à distance", "description": "Démarchage bancaire et financier, MIFID."},
-    {"key": "relation-client", "title": "Relation client et conseil", "description": "Information, conseil, profil de risque."},
-    {"key": "organisation-marches", "title": "Organisation des marchés", "description": "Euronext, marchés réglementés, dark pools."},
-    {"key": "gestion-risques", "title": "Gestion des risques", "description": "Risques de marché, contrepartie, opérationnel."},
-    {"key": "ethique", "title": "Éthique professionnelle", "description": "Intégrité, transparence, indépendance."},
+- 15 thèmes répartis en deux blocs : Cat A (tronc commun) et Cat C (compétences spécifiques).
+- 2 thèmes sont accessibles gratuitement (50 questions au total, 25 par thème).
+- Les autres thèmes nécessitent l'abonnement Premium.
+"""
+
+THEMES = [
+    # Cat A
+    {"key": "cat-a-deontologie-et-conformite", "csv": "Cat A - Deontologie et conformite",
+     "title": "Déontologie et conformité", "block": "A",
+     "description": "Règles de bonne conduite, RCSI/RCCI, primauté de l'intérêt du client."},
+    {"key": "cat-a-abus-de-marche", "csv": "Cat A - Abus de marche",
+     "title": "Abus de marché", "block": "A",
+     "description": "Délit d'initié, manipulation de cours, diffusion fausse information."},
+    {"key": "cat-a-blanchiment-dargent", "csv": "Cat A - Blanchiment d'argent",
+     "title": "Lutte contre le blanchiment", "block": "A",
+     "description": "LCB-FT, TRACFIN, KYC, vigilance renforcée."},
+    {"key": "cat-a-commercialisation-instruments-financiers", "csv": "Cat A - Commercialisation instruments financiers (A)",
+     "title": "Commercialisation des instruments financiers (A)", "block": "A",
+     "description": "Démarchage, MIF 2, vente à distance."},
+    {"key": "cat-a-fonctionnement-organisation-marches", "csv": "Cat A - Fonctionnement et organisation des marches (A)",
+     "title": "Fonctionnement et organisation des marchés (A)", "block": "A",
+     "description": "Marchés réglementés, MTF, OTF, négociation."},
+    {"key": "cat-a-relations-clients", "csv": "Cat A - Relations avec les clients (A)",
+     "title": "Relations avec les clients (A)", "block": "A",
+     "description": "Devoir d'information, profil de risque, adéquation."},
+
+    # Cat C
+    {"key": "cat-c-cadre-institutionnel-reglementaire", "csv": "Cat C - Cadre institutionnel et reglementaire",
+     "title": "Cadre institutionnel et réglementaire", "block": "C",
+     "description": "AMF, ACPR, ESMA, hiérarchie des normes."},
+    {"key": "cat-c-bases-comptables-financieres", "csv": "Cat C - Bases comptables et financieres",
+     "title": "Bases comptables et financières", "block": "C",
+     "description": "Bilan, compte de résultat, analyse financière."},
+    {"key": "cat-c-instruments-financiers-crypto", "csv": "Cat C - Instruments financiers et crypto-actifs",
+     "title": "Instruments financiers et crypto-actifs", "block": "C",
+     "description": "Actions, obligations, dérivés, crypto-actifs."},
+    {"key": "cat-c-gestion-collective", "csv": "Cat C - Gestion collective / compte de tiers",
+     "title": "Gestion collective et compte de tiers", "block": "C",
+     "description": "OPCVM, FIA, sociétés de gestion."},
+    {"key": "cat-c-fonctionnement-organisation-marches", "csv": "Cat C - Fonctionnement et organisation des marches (C)",
+     "title": "Fonctionnement et organisation des marchés (C)", "block": "C",
+     "description": "Carnet d'ordres, types d'ordres, dark pools."},
+    {"key": "cat-c-post-marche", "csv": "Cat C - Post-marche et infrastructures",
+     "title": "Post-marché et infrastructures", "block": "C",
+     "description": "Règlement-livraison, CCP, dépositaires."},
+    {"key": "cat-c-emissions-operations", "csv": "Cat C - Emissions et operations sur titres",
+     "title": "Émissions et opérations sur titres", "block": "C",
+     "description": "Introduction en bourse, OPA, augmentations de capital."},
+    {"key": "cat-c-commercialisation-instruments-financiers", "csv": "Cat C - Commercialisation instruments financiers (C)",
+     "title": "Commercialisation des instruments financiers (C)", "block": "C",
+     "description": "Documents pré-contractuels, PRIIPs, DIC."},
+    {"key": "cat-c-relations-clients", "csv": "Cat C - Relations avec les clients (C)",
+     "title": "Relations avec les clients (C)", "block": "C",
+     "description": "Conseil en investissement, gestion sous mandat."},
 ]
 
+# Thèmes accessibles en version gratuite (50 questions, 25 par thème).
+FREE_THEME_KEYS = {"cat-a-deontologie-et-conformite", "cat-c-cadre-institutionnel-reglementaire"}
+FREE_QUESTIONS_PER_THEME = 25
 
-def _q(theme, text, options, correct, explanation):
-    return {
-        "theme": theme,
-        "text": text,
-        "options": options,
-        "correct_index": correct,
-        "explanation": explanation,
-    }
+# Plan tarifaire
+PREMIUM_PRICE_EUR = 19.99
+PREMIUM_DURATION_DAYS = 30
 
 
-AMF_QUESTIONS = [
-    # Réglementation
-    _q("reglementation", "Quel est l'organisme français de régulation des marchés financiers ?",
-       ["L'ACPR", "L'AMF", "La Banque de France", "Le HCSF"], 1,
-       "L'AMF (Autorité des marchés financiers) régule les marchés financiers en France."),
-    _q("reglementation", "La directive MIF 2 est entrée en application le :",
-       ["3 janvier 2018", "1er janvier 2017", "1er juillet 2019", "1er janvier 2020"], 0,
-       "La directive MIF 2 est entrée en application le 3 janvier 2018."),
-    _q("reglementation", "Quelle autorité contrôle les banques et assurances en France ?",
-       ["L'AMF", "L'ACPR", "L'AFP", "L'EBA"], 1,
-       "L'ACPR (Autorité de contrôle prudentiel et de résolution) supervise banques et assurances."),
-    _q("reglementation", "L'abus de marché regroupe principalement :",
-       ["Le délit d'initié et la manipulation de cours", "Le défaut de conseil",
-        "Le démarchage abusif", "Le faux et usage de faux"], 0,
-       "L'abus de marché vise notamment les opérations d'initiés et les manipulations de cours."),
-    _q("reglementation", "Le règlement général de l'AMF est :",
-       ["Une recommandation", "Un texte contraignant homologué par arrêté ministériel",
-        "Une norme européenne", "Un code interne"], 1,
-       "Le RG AMF est un texte réglementaire homologué."),
+def get_theme_by_key(key: str):
+    for t in THEMES:
+        if t["key"] == key:
+            return t
+    return None
 
-    # LCB-FT
-    _q("lutte-blanchiment", "TRACFIN est le service français de :",
-       ["Renseignement fiscal", "Renseignement financier (LCB-FT)",
-        "Contrôle douanier", "Contrôle prudentiel"], 1,
-       "TRACFIN reçoit les déclarations de soupçon."),
-    _q("lutte-blanchiment", "La déclaration de soupçon doit être adressée :",
-       ["À l'AMF", "Au procureur", "À TRACFIN", "À la BCE"], 2,
-       "Les déclarations de soupçon sont transmises à TRACFIN."),
-    _q("lutte-blanchiment", "Le KYC (Know Your Customer) consiste à :",
-       ["Vendre des produits structurés", "Identifier et connaître son client",
-        "Gérer un portefeuille", "Calculer un rendement"], 1,
-       "Le KYC vise à connaître l'identité et le profil du client."),
-    _q("lutte-blanchiment", "Une PPE (Personne Politiquement Exposée) impose :",
-       ["Aucune mesure spécifique", "Des mesures de vigilance renforcée",
-        "L'interdiction d'entrer en relation", "Une déclaration au fisc"], 1,
-       "Les PPE imposent une vigilance renforcée."),
-    _q("lutte-blanchiment", "Les obligations LCB-FT s'appliquent :",
-       ["Uniquement aux banques", "À tous les professionnels assujettis",
-        "Uniquement aux compagnies d'assurance", "Aux particuliers"], 1,
-       "Toutes les entités assujetties (PSI, banques, assureurs, etc.) sont concernées."),
 
-    # Déontologie
-    _q("deontologie", "Le RCSI veille principalement à :",
-       ["La performance des fonds", "Le respect des obligations professionnelles",
-        "La trésorerie", "Le recrutement"], 1,
-       "Le RCSI est le Responsable de la Conformité pour les Services d'Investissement."),
-    _q("deontologie", "La primauté de l'intérêt du client implique :",
-       ["De maximiser les commissions", "De faire passer l'intérêt du client avant celui du PSI",
-        "De vendre les produits maison", "De refuser tout conseil"], 1,
-       "Le client est prioritaire."),
-    _q("deontologie", "Un conflit d'intérêts doit être :",
-       ["Caché", "Identifié, géré et le cas échéant déclaré au client",
-        "Toujours évité par la rupture du contrat", "Sans conséquence"], 1,
-       "Les conflits d'intérêts doivent être gérés et, à défaut, communiqués."),
-    _q("deontologie", "La chasse aux commissions cachées (inducements) est :",
-       ["Encouragée", "Encadrée strictement par MIF 2", "Interdite en toutes circonstances",
-        "Sans réglementation"], 1,
-       "MIF 2 encadre fortement les rétrocessions."),
-
-    # Instruments financiers
-    _q("instruments-financiers", "Une action confère à son détenteur :",
-       ["Un droit de créance", "Un droit de propriété sur une fraction du capital",
-        "Un intérêt fixe", "Une garantie en capital"], 1,
-       "L'action représente une part du capital social."),
-    _q("instruments-financiers", "Une obligation est :",
-       ["Un titre de capital", "Un titre de créance",
-        "Un produit dérivé", "Un OPCVM"], 1,
-       "L'obligation est un titre de créance."),
-    _q("instruments-financiers", "Un OPCVM est :",
-       ["Un produit dérivé", "Un Organisme de Placement Collectif en Valeurs Mobilières",
-        "Une obligation d'État", "Un fonds de pension"], 1,
-       "OPCVM = Organisme de Placement Collectif en Valeurs Mobilières."),
-    _q("instruments-financiers", "Le coupon d'une obligation représente :",
-       ["Le remboursement final", "L'intérêt versé périodiquement",
-        "La plus-value", "Le dividende"], 1,
-       "Le coupon est l'intérêt périodique."),
-    _q("instruments-financiers", "Le sous-jacent d'un dérivé peut être :",
-       ["Uniquement une action", "Uniquement une devise",
-        "Une action, indice, devise, matière première, taux", "Aucune des réponses"], 2,
-       "Les sous-jacents sont variés."),
-    _q("instruments-financiers", "Un warrant est :",
-       ["Un OPCVM monétaire", "Un produit dérivé donnant un droit d'achat ou de vente",
-        "Une obligation", "Un livret"], 1,
-       "Un warrant est un dérivé optionnel coté."),
-
-    # Gestion collective
-    _q("gestion-collective", "Un FIA est :",
-       ["Un Fonds d'Investissement Alternatif", "Une Filiale Indépendante d'Assurance",
-        "Un Fonds d'Indemnisation", "Aucune des réponses"], 0,
-       "FIA = Fonds d'Investissement Alternatif."),
-    _q("gestion-collective", "La société de gestion d'OPCVM doit être agréée par :",
-       ["La BCE", "L'AMF", "L'ACPR", "Bercy"], 1,
-       "L'AMF agrée les sociétés de gestion d'OPCVM."),
-    _q("gestion-collective", "Le DICI/DIC est :",
-       ["Un document interne", "Le Document d'Information Clé pour l'investisseur",
-        "Une recommandation BCE", "Un rapport annuel"], 1,
-       "Le DIC informe l'investisseur (PRIIPs/UCITS)."),
-
-    # Négociation post-marché
-    _q("negociation", "Le règlement-livraison s'effectue généralement en :",
-       ["T+0", "T+1", "T+2", "T+5"], 2,
-       "Sur Euronext, c'est T+2 (passage à T+1 prévu)."),
-    _q("negociation", "Une chambre de compensation a pour rôle :",
-       ["De fixer les cours", "De garantir la bonne fin des opérations",
-        "De distribuer les dividendes", "De conseiller les investisseurs"], 1,
-       "La CCP garantit la bonne fin des opérations."),
-
-    # Fiscalité
-    _q("fiscalite", "Le PEA permet :",
-       ["L'investissement uniquement en actions américaines",
-        "L'investissement en actions européennes avec avantage fiscal après 5 ans",
-        "Un retrait sans condition", "Une exonération immédiate"], 1,
-       "Le PEA cible des actions UE avec fiscalité avantageuse après 5 ans."),
-    _q("fiscalite", "Le plafond des versements d'un PEA classique est de :",
-       ["75 000 €", "100 000 €", "150 000 €", "200 000 €"], 2,
-       "Plafond du PEA classique : 150 000 €."),
-    _q("fiscalite", "Le PFU (flat tax) est de :",
-       ["12,8 %", "17,2 %", "30 %", "24 %"], 2,
-       "Le PFU est de 30 % (IR 12,8 % + PS 17,2 %)."),
-    _q("fiscalite", "L'assurance-vie permet une fiscalité allégée à partir de :",
-       ["4 ans", "5 ans", "8 ans", "12 ans"], 2,
-       "Après 8 ans, abattement annuel et fiscalité réduite."),
-
-    # Démarchage
-    _q("demarchage", "Le démarchage bancaire et financier nécessite :",
-       ["Aucune formalité", "Un mandat et une carte de démarcheur",
-        "Une licence européenne", "L'accord du fisc"], 1,
-       "Le démarchage impose un mandat et l'enregistrement."),
-    _q("demarchage", "Le délai de rétractation en démarchage est de :",
-       ["7 jours", "14 jours calendaires", "30 jours", "Aucun"], 1,
-       "14 jours calendaires révolus en démarchage."),
-
-    # Relation client
-    _q("relation-client", "Avant tout conseil, le PSI doit :",
-       ["Vendre le produit maison", "Évaluer le profil et les besoins du client",
-        "Encaisser les frais", "Faire signer un mandat"], 1,
-       "Le test d'adéquation/caractère approprié est obligatoire."),
-    _q("relation-client", "L'information précontractuelle doit être :",
-       ["Optionnelle", "Claire, exacte et non trompeuse",
-        "Orale uniquement", "Réservée aux pros"], 1,
-       "MIF 2 impose une information claire, exacte et non trompeuse."),
-    _q("relation-client", "Le profil de risque d'un client doit :",
-       ["Être ignoré", "Être actualisé périodiquement",
-        "Être public", "Être fixé par la loi"], 1,
-       "Le profil doit être actualisé régulièrement."),
-
-    # Organisation des marchés
-    _q("organisation-marches", "Euronext Paris est :",
-       ["Un système multilatéral de négociation", "Un marché réglementé",
-        "Un dark pool", "Une chambre de compensation"], 1,
-       "Euronext Paris est un marché réglementé."),
-    _q("organisation-marches", "Un OTF est :",
-       ["Un fonds", "Un système organisé de négociation",
-        "Une obligation", "Une action"], 1,
-       "OTF = Organised Trading Facility (MIF 2)."),
-
-    # Risques
-    _q("gestion-risques", "Le risque de contrepartie est :",
-       ["Le risque que le marché baisse",
-        "Le risque que la contrepartie ne respecte pas ses engagements",
-        "Le risque opérationnel", "Le risque de change"], 1,
-       "Risque de défaillance de la contrepartie."),
-    _q("gestion-risques", "La VaR mesure :",
-       ["Le rendement", "La perte potentielle maximale sur un horizon donné",
-        "Le taux sans risque", "La volatilité réalisée"], 1,
-       "La Value at Risk estime la perte potentielle."),
-
-    # Éthique
-    _q("ethique", "L'indépendance du conseil implique :",
-       ["De vendre uniquement les produits maison",
-        "D'analyser un large éventail de produits et de ne pas recevoir de rétrocession",
-        "De refuser tout conseil", "De facturer un pourcentage"], 1,
-       "MIF 2 définit le conseil indépendant."),
-    _q("ethique", "Le secret professionnel s'applique :",
-       ["Uniquement aux médecins", "À tous les collaborateurs d'un PSI",
-        "Aux clients", "Aux régulateurs"], 1,
-       "Tous les collaborateurs sont tenus au secret professionnel."),
-]
+def get_theme_by_csv(csv_label: str):
+    for t in THEMES:
+        if t["csv"] == csv_label:
+            return t
+    return None

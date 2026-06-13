@@ -1,0 +1,33 @@
+{
+  "summary": "Iteration 2 (freemium + Stripe) – Backend: 20/20 pytest pass: 15 themes with free_count=25 on the 2 free themes (cat-a-deontologie-et-conformite, cat-c-cadre-institutionnel-reglementaire), anonymous + free user see is_locked=true on 13 premium themes, admin sees all unlocked; POST /api/sessions/start with premium-only category returns 402 'Premium' message; exam mode for free returns 402 'examen blanc'; free training pool capped to 50 free questions, options length=3, correct_index stripped; POST /api/sessions/{id}/finish-question returns correct_index/explanation/source in training, 400 in exam; /api/subscription/checkout returns valid stripe URL + session_id (auth required, 401 anonymous); admin exam returns 120 questions duration 5400s; /auth/me returns subscription_active + subscription_until. Frontend: /themes anonymous shows 15 cards split A/C with PREMIUM lock badges on 13 cards and GRATUIT on 2; logged-in free user sees themes-cta-upgrade, dashboard-upgrade-banner + dashboard-cta-upgrade, entrainement-paywall-banner, nav-upgrade; locked theme click disables start-training and shows S'abonner link; quiz training reveals reveal-block with explanation after option click; /examen-blanc shows exam-cta-upgrade for free user (no start-exam); /abonnement subscribe-btn POSTs to /api/subscription/checkout and navigates to https://checkout.stripe.com/c/pay/cs_test_… (confirmed via framenavigated event); admin sees nav-premium-badge and start-exam on /examen-blanc.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py: get_session_details still returns full questions including correct_index when session is finished — fine for review screen, but consider stripping on the in-progress GET path which already does so (OK as-is).",
+    "Stripe checkout: webhook_url is empty when constructing StripeCheckout in /api/subscription/checkout (only polling is used). Acceptable; ensure /api/webhook/stripe path is configured in Stripe dashboard for production webhooks if/when needed.",
+    "_pick_questions uses random.choice to pad when pool < target — for free users training count is min(target, len(pool)) so OK; but free user without category currently caps to len(free_pool)=50 unique. Good. Document this behaviour.",
+    "Frontend Themes.js: anonymous upsell banner does not have a data-testid (only the 'themes-cta-upgrade' on logged-in free user has one). Minor: would help testability.",
+    "CORS: allow_credentials=True with allow_origins='*' default — browsers block credentialed requests with wildcard. Frontend uses Bearer (no withCredentials), so it works, but configure CORS_ORIGINS explicitly in prod."
+  ],
+  "updated_files": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/iteration_2.json",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "success_rate": {"backend": "100% (20/20)", "frontend": "100% (all flows verified)"},
+  "test_credentials": "Admin: admin@amfquest.fr / Admin1234! ; Pre-existing free user: user@amfquest.fr / User1234! ; New users registered with timestamped emails test_user_<ts>@amfquest.fr / Test1234!",
+  "seed_data_creation": "Test users created during pytest (timestamped). One e2e Playwright user registered for UI flows.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend pytest suite at /app/backend/tests/backend_test.py (20 tests) covers freemium + Stripe. Stripe is in test mode (STRIPE_API_KEY=sk_test_emergent). /api/subscription/checkout returns a real https://checkout.stripe.com URL — only verify URL shape, do NOT complete payment. To grant premium to a user for UI testing, either log in as admin or update db.users.subscription_until manually. /categories returns 15 themes with free_count=25 on 2 free themes; total 2389 questions seeded. Quiz reveal testid='reveal-block' appears on training mode after option click.",
+  "rca of the issue": "N/A – no failures"
+}

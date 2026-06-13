@@ -84,6 +84,7 @@ export default function Resultats() {
                   <div className="mt-4 border-l-2 border-[#002FA7] pl-4 text-sm text-zinc-700">
                     <span className="overline text-[#002FA7]">EXPLICATION</span>
                     <p className="mt-1 leading-relaxed">{r.explanation}</p>
+                    {r.source && <p className="text-xs text-zinc-500 mt-2 font-mono-ibm">Source : {r.source}</p>}
                   </div>
                 </div>
               </div>

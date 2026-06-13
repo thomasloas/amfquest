@@ -2,12 +2,13 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
-import { ArrowRight, Award, BookOpen, Clock, Timer } from "lucide-react";
+import { ArrowRight, Award, BarChart3, BookOpen, Clock, Sparkles, Timer } from "lucide-react";
 
 export default function Dashboard() {
   const { user } = useAuth();
   const [stats, setStats] = useState(null);
   const [cats, setCats] = useState([]);
+  const isPremium = !!user?.subscription_active;
 
   useEffect(() => {
     api.get("/stats").then((r) => setStats(r.data));
@@ -40,6 +41,20 @@ export default function Dashboard() {
         <StatCard label="Bonnes réponses" value={stats?.total_correct ?? "—"} testid="stat-correct" />
         <StatCard label="Taux global" value={stats ? `${stats.global_percent}%` : "—"} testid="stat-percent" highlight />
       </div>
+
+      {!isPremium && (
+        <div className="mt-10 border-2 border-[#002FA7] bg-[#EFF3FF] p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4" data-testid="dashboard-upgrade-banner">
+          <div className="flex items-start gap-4">
+            <Sparkles className="text-[#002FA7] mt-1" />
+            <div>
+              <div className="overline text-[#002FA7]">FORMULE GRATUITE</div>
+              <h3 className="font-heading text-xl font-bold mt-1">Débloquez les 2 389 questions et l'examen blanc.</h3>
+              <p className="text-zinc-600 text-sm mt-1">Accès illimité aux 15 thèmes pour 19,99€ / 30 jours.</p>
+            </div>
+          </div>
+          <Link to="/abonnement" data-testid="dashboard-cta-upgrade" className="btn-primary">Passer Premium</Link>
+        </div>
+      )}
 
       <div className="mt-12 grid lg:grid-cols-12 gap-8">
         <div className="lg:col-span-7">
@@ -88,20 +103,23 @@ export default function Dashboard() {
         <div className="lg:col-span-5">
           <div className="overline mb-4">DÉMARRER PAR THÈME</div>
           <div className="border border-zinc-200 bg-white max-h-[460px] overflow-y-auto">
-            {cats.map((c) => (
-              <Link
-                key={c.key}
-                to={`/entrainement?theme=${c.key}`}
-                data-testid={`dashboard-theme-${c.key}`}
-                className="flex items-center justify-between p-4 border-b border-zinc-100 hover:bg-zinc-50"
-              >
-                <div className="flex items-center gap-3">
-                  <Award size={16} className="text-[#002FA7]" />
-                  <span className="text-sm font-semibold">{c.title}</span>
-                </div>
-                <span className="text-xs text-zinc-500">{c.question_count}</span>
-              </Link>
-            ))}
+            {cats.map((c) => {
+              const locked = c.is_locked && !isPremium;
+              return (
+                <Link
+                  key={c.key}
+                  to={locked ? "/abonnement" : `/entrainement?theme=${c.key}`}
+                  data-testid={`dashboard-theme-${c.key}`}
+                  className="flex items-center justify-between p-4 border-b border-zinc-100 hover:bg-zinc-50"
+                >
+                  <div className="flex items-center gap-3">
+                    <Award size={16} className={locked ? "text-zinc-400" : "text-[#002FA7]"} />
+                    <span className={`text-sm font-semibold ${locked ? "text-zinc-500" : ""}`}>{c.title}</span>
+                  </div>
+                  <span className="text-xs text-zinc-500">{locked ? "Premium" : (c.is_free_theme ? `${c.free_count} gratuites` : c.question_count)}</span>
+                </Link>
+              );
+            })}
           </div>
         </div>
       </div>

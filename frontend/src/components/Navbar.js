@@ -1,6 +1,6 @@
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { LogOut, Menu, X } from "lucide-react";
+import { LogOut, Menu, Sparkles, X } from "lucide-react";
 import { useState } from "react";
 
 const linkBase = "text-sm font-semibold tracking-wide hover:text-[#002FA7] transition-colors";
@@ -10,6 +10,7 @@ export default function Navbar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const isPremium = !!user?.subscription_active;
 
   return (
     <header className="sticky top-0 z-40 bg-white border-b border-zinc-200">
@@ -19,7 +20,7 @@ export default function Navbar() {
           <span className="font-heading font-black tracking-tighter text-lg">AMFQUEST</span>
           <span className="hidden md:inline-block overline ml-2">CERTIFICATION AMF</span>
         </Link>
-        <nav className="hidden md:flex items-center gap-8">
+        <nav className="hidden md:flex items-center gap-7">
           <NavLink data-testid="nav-home" to="/" end className={({isActive}) => `${linkBase} ${isActive ? linkActive : "text-zinc-700"}`}>Accueil</NavLink>
           <NavLink data-testid="nav-offre" to="/offre" className={({isActive}) => `${linkBase} ${isActive ? linkActive : "text-zinc-700"}`}>L'offre</NavLink>
           <NavLink data-testid="nav-themes" to="/themes" className={({isActive}) => `${linkBase} ${isActive ? linkActive : "text-zinc-700"}`}>Thèmes</NavLink>
@@ -28,9 +29,16 @@ export default function Navbar() {
         <div className="hidden md:flex items-center gap-3">
           {user ? (
             <>
+              {isPremium ? (
+                <span data-testid="nav-premium-badge" className="text-xs font-bold tracking-wider px-2 py-1 border border-[#059669] text-[#059669]">PREMIUM</span>
+              ) : (
+                <Link to="/abonnement" data-testid="nav-upgrade" className="btn-primary !py-2 !px-3 text-xs">
+                  <Sparkles size={12} /> Premium
+                </Link>
+              )}
               <Link to="/tableau-de-bord" data-testid="nav-dashboard" className="btn-secondary !py-2 !px-4 text-sm">Mon tableau</Link>
-              <button data-testid="nav-logout" onClick={async () => { await logout(); navigate("/"); }} className="btn-primary !py-2 !px-4 text-sm">
-                <LogOut size={14} /> Déconnexion
+              <button data-testid="nav-logout" onClick={async () => { await logout(); navigate("/"); }} className="btn-secondary !py-2 !px-3 text-sm" aria-label="Déconnexion">
+                <LogOut size={14} />
               </button>
             </>
           ) : (
@@ -53,6 +61,7 @@ export default function Navbar() {
             <Link to="/contact" onClick={() => setOpen(false)} className={linkBase}>Contact</Link>
             {user ? (
               <>
+                <Link to="/abonnement" onClick={() => setOpen(false)} className={linkBase}>Abonnement</Link>
                 <Link to="/tableau-de-bord" onClick={() => setOpen(false)} className="btn-secondary !py-2 !px-4 text-sm justify-center">Mon tableau</Link>
                 <button onClick={async () => { await logout(); setOpen(false); navigate("/"); }} className="btn-primary !py-2 !px-4 text-sm justify-center">Déconnexion</button>
               </>
