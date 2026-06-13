@@ -28,7 +28,10 @@ export default function Register() {
     <div data-testid="register-page" className="max-w-md mx-auto px-6 py-20">
       <div className="overline mb-4">INSCRIPTION</div>
       <h1 className="font-heading text-4xl tracking-tighter font-black">Créez votre compte AMFQUEST.</h1>
-      <form onSubmit={onSubmit} className="mt-10 space-y-5 border border-zinc-200 bg-white p-8">
+      <div className="mt-4 border-2 border-amber-500 bg-amber-50 p-4 text-sm text-amber-900" data-testid="trial-pitch">
+        <strong>Bonus inscription :</strong> 24h d'accès Premium offert (2 389 questions + examen blanc). Aucune carte bancaire requise.
+      </div>
+      <form onSubmit={onSubmit} className="mt-8 space-y-5 border border-zinc-200 bg-white p-8">
         <div>
           <label className="overline text-zinc-500 block mb-2">NOM COMPLET</label>
           <input data-testid="register-name" type="text" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full border border-zinc-300 px-4 py-3 focus:outline-none focus:border-[#002FA7] focus:ring-2 focus:ring-[#002FA7]/20" />

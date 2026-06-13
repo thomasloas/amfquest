@@ -84,16 +84,28 @@ export default function Quiz() {
 
   return (
     <div data-testid="quiz-page" className="max-w-4xl mx-auto px-6 lg:px-10 py-12">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
         <div>
           <div className="overline">{isExam ? "EXAMEN BLANC" : "ENTRAÎNEMENT"}</div>
           <div className="font-mono-ibm text-sm text-zinc-500 mt-1">Question {idx + 1} / {total} · {answered} répondues</div>
         </div>
-        {isExam && (
-          <div data-testid="quiz-timer" className="flex items-center gap-2 border border-zinc-300 px-4 py-2 font-mono-ibm font-bold text-lg">
-            <Clock size={16} /> {fmtTime(remaining)}
-          </div>
-        )}
+        <div className="flex items-center gap-3">
+          {isExam ? (
+            <div data-testid="quiz-timer" className="flex items-center gap-2 border border-zinc-300 px-4 py-2 font-mono-ibm font-bold text-lg">
+              <Clock size={16} /> {fmtTime(remaining)}
+            </div>
+          ) : (
+            <button
+              data-testid="quiz-finish-anytime"
+              onClick={finishExam}
+              disabled={submitting || answered === 0}
+              className="btn-secondary !py-2 !px-4 text-sm disabled:opacity-40"
+              title="Terminer la session et voir le score"
+            >
+              Terminer maintenant
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="h-2 bg-zinc-200 mb-8">

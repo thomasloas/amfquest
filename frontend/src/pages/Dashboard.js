@@ -9,6 +9,8 @@ export default function Dashboard() {
   const [stats, setStats] = useState(null);
   const [cats, setCats] = useState([]);
   const isPremium = !!user?.subscription_active;
+  const trialActive = !!user?.trial_active;
+  const trialUntil = user?.trial_until ? new Date(user.trial_until) : null;
 
   useEffect(() => {
     api.get("/stats").then((r) => setStats(r.data));
@@ -53,6 +55,20 @@ export default function Dashboard() {
             </div>
           </div>
           <Link to="/abonnement" data-testid="dashboard-cta-upgrade" className="btn-primary">Passer Premium</Link>
+        </div>
+      )}
+
+      {isPremium && trialActive && trialUntil && (
+        <div className="mt-10 border-2 border-[#F59E0B] bg-amber-50 p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4" data-testid="dashboard-trial-banner">
+          <div className="flex items-start gap-4">
+            <Clock className="text-amber-600 mt-1" />
+            <div>
+              <div className="overline text-amber-700">ESSAI PREMIUM · 24H</div>
+              <h3 className="font-heading text-xl font-bold mt-1">Votre essai gratuit expire le {trialUntil.toLocaleString("fr-FR", { dateStyle: "medium", timeStyle: "short" })}.</h3>
+              <p className="text-zinc-600 text-sm mt-1">Profitez de l'accès complet jusqu'à la fin de l'essai, puis passez Premium pour conserver vos avantages.</p>
+            </div>
+          </div>
+          <Link to="/abonnement" data-testid="dashboard-cta-from-trial" className="btn-primary">Passer Premium</Link>
         </div>
       )}
 

@@ -11,6 +11,7 @@ export default function Navbar() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const isPremium = !!user?.subscription_active;
+  const trialActive = !!user?.trial_active;
 
   return (
     <header className="sticky top-0 z-40 bg-white border-b border-zinc-200">
@@ -30,7 +31,11 @@ export default function Navbar() {
           {user ? (
             <>
               {isPremium ? (
-                <span data-testid="nav-premium-badge" className="text-xs font-bold tracking-wider px-2 py-1 border border-[#059669] text-[#059669]">PREMIUM</span>
+                trialActive ? (
+                  <Link to="/abonnement" data-testid="nav-trial-badge" className="text-xs font-bold tracking-wider px-2 py-1 border border-amber-600 text-amber-700 hover:bg-amber-50">ESSAI 24H</Link>
+                ) : (
+                  <span data-testid="nav-premium-badge" className="text-xs font-bold tracking-wider px-2 py-1 border border-[#059669] text-[#059669]">PREMIUM</span>
+                )
               ) : (
                 <Link to="/abonnement" data-testid="nav-upgrade" className="btn-primary !py-2 !px-3 text-xs">
                   <Sparkles size={12} /> Premium

@@ -161,6 +161,17 @@ def _set_auth_cookies(response: Response, access: str, refresh: str):
 
 
 def _user_payload(user: dict) -> dict:
+    now = datetime.now(timezone.utc)
+    trial_until = user.get("trial_until")
+    trial_active = False
+    if trial_until:
+        try:
+            tu = datetime.fromisoformat(trial_until)
+            if tu.tzinfo is None:
+                tu = tu.replace(tzinfo=timezone.utc)
+            trial_active = tu > now
+        except Exception:
+            trial_active = False
     return {
         "id": user["id"],
         "email": user["email"],
@@ -168,6 +179,8 @@ def _user_payload(user: dict) -> dict:
         "role": user.get("role", "user"),
         "subscription_active": has_active_subscription(user),
         "subscription_until": user.get("subscription_until"),
+        "trial_active": trial_active,
+        "trial_until": trial_until,
     }
 
 
@@ -178,13 +191,16 @@ async def register(payload: RegisterIn, response: Response):
     if await db.users.find_one({"email": email}):
         raise HTTPException(status_code=400, detail="Un compte existe déjà avec cet email")
     user_id = str(uuid.uuid4())
+    trial_until = (datetime.now(timezone.utc) + timedelta(hours=24)).isoformat()
     user_doc = {
         "id": user_id,
         "email": email,
         "name": payload.name.strip(),
         "password_hash": hash_password(payload.password),
         "role": "user",
-        "subscription_until": None,
+        "subscription_until": trial_until,
+        "trial_used": True,
+        "trial_until": trial_until,
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     await db.users.insert_one(user_doc)

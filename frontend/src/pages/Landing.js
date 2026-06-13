@@ -23,12 +23,13 @@ export default function Landing() {
             </p>
             <div className="mt-10 flex flex-col sm:flex-row gap-3">
               <Link to="/inscription" data-testid="hero-cta-primary" className="btn-primary">
-                Commencer gratuitement <ArrowRight size={16} />
+                Démarrer 24h Premium offert <ArrowRight size={16} />
               </Link>
               <Link to="/themes" data-testid="hero-cta-secondary" className="btn-secondary">
-                Voir les 12 thèmes
+                Voir les 15 thèmes
               </Link>
             </div>
+            <p className="mt-3 text-xs text-zinc-500">Aucune carte bancaire requise · accès Premium 24h offert à l'inscription</p>
             <div className="mt-10 flex flex-wrap gap-6 text-sm text-zinc-500">
               <div className="flex items-center gap-2"><ShieldCheck size={16} className="text-[#002FA7]" /> Programme officiel AMF</div>
               <div className="flex items-center gap-2"><Clock size={16} className="text-[#002FA7]" /> Examen blanc 120 questions</div>
