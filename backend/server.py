@@ -33,6 +33,9 @@ from emergentintegrations.payments.stripe.checkout import (
     StripeCheckout, CheckoutSessionRequest,
 )
 
+import asyncio
+import resend
+
 # ------------- DB --------------
 mongo_url = os.environ["MONGO_URL"]
 client = AsyncIOMotorClient(mongo_url)
@@ -607,6 +610,125 @@ async def root():
     return {"name": "AMFQUEST API", "ok": True}
 
 
+# ------------- Trial reminder e-mails (Resend) --------------
+def _render_trial_reminder_html(name: str, hours_left: int, upgrade_url: str) -> str:
+    safe_name = (name or "").split(" ")[0] or "vous"
+    return f"""\
+<!doctype html>
+<html lang="fr">
+<body style="margin:0;padding:0;background:#FAFAFA;font-family:Arial,Helvetica,sans-serif;color:#0A0A0A;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FAFAFA;padding:32px 0;">
+    <tr><td align="center">
+      <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border:1px solid #E4E4E7;">
+        <tr><td style="padding:28px 32px 8px 32px;">
+          <div style="display:inline-block;width:28px;height:28px;background:#002FA7;color:#ffffff;text-align:center;line-height:28px;font-weight:900;font-family:Georgia,serif;">A</div>
+          <span style="margin-left:8px;font-weight:900;letter-spacing:-0.02em;font-size:18px;">AMFQUEST</span>
+        </td></tr>
+        <tr><td style="padding:8px 32px 0 32px;">
+          <div style="text-transform:uppercase;letter-spacing:.2em;font-size:11px;font-weight:700;color:#002FA7;">ESSAI PREMIUM · BIENTÔT TERMINÉ</div>
+          <h1 style="font-size:26px;line-height:1.15;margin:14px 0 0 0;letter-spacing:-0.02em;">
+            Plus que {hours_left}h pour profiter de votre accès Premium, {safe_name}.
+          </h1>
+        </td></tr>
+        <tr><td style="padding:18px 32px 0 32px;color:#52525B;font-size:15px;line-height:1.6;">
+          <p>Votre essai gratuit de 24 heures touche à sa fin. Pour continuer à accéder à&nbsp;:</p>
+          <ul style="padding-left:18px;margin:8px 0 16px 0;">
+            <li>les <b>2 389 questions</b> couvrant les 15 thèmes officiels AMF,</li>
+            <li>l'<b>examen blanc chronométré</b> (120 questions · 90 min · seuil 80%),</li>
+            <li>les <b>statistiques détaillées</b> et l'historique complet,</li>
+          </ul>
+          <p>passez Premium dès maintenant pour seulement <b>19,99&nbsp;€ / 30&nbsp;jours</b>, sans reconduction automatique.</p>
+        </td></tr>
+        <tr><td style="padding:24px 32px 8px 32px;">
+          <a href="{upgrade_url}" style="display:inline-block;background:#002FA7;color:#ffffff;text-decoration:none;padding:14px 22px;font-weight:700;letter-spacing:.02em;">
+            Passer Premium · 19,99 €
+          </a>
+        </td></tr>
+        <tr><td style="padding:8px 32px 32px 32px;color:#A1A1AA;font-size:12px;line-height:1.5;">
+          Si vous ne souhaitez pas continuer, vous n'avez rien à faire&nbsp;: votre compte basculera automatiquement en formule gratuite (50 questions sur 2 thèmes).
+          <br/><br/>
+          — L'équipe AMFQUEST
+        </td></tr>
+      </table>
+      <div style="color:#A1A1AA;font-size:11px;margin-top:18px;">Vous recevez cet e-mail car vous avez créé un compte AMFQUEST.</div>
+    </td></tr>
+  </table>
+</body>
+</html>"""
+
+
+async def _send_email(to: str, subject: str, html: str) -> Optional[str]:
+    if not os.environ.get("RESEND_API_KEY"):
+        return None
+    sender = os.environ.get("SENDER_EMAIL", "onboarding@resend.dev")
+    params = {"from": sender, "to": [to], "subject": subject, "html": html}
+    try:
+        res = await asyncio.to_thread(resend.Emails.send, params)
+        return (res or {}).get("id")
+    except Exception as e:
+        logger.exception("Resend send failed for %s: %s", to, e)
+        return None
+
+
+async def _scan_and_send_trial_reminders():
+    """Find users whose trial expires within the configured window and remind them once."""
+    window = int(os.environ.get("TRIAL_REMINDER_BEFORE_MINUTES", "60"))
+    now = datetime.now(timezone.utc)
+    soon = now + timedelta(minutes=window)
+    # Fetch candidates: trial_until set, not yet reminded
+    cursor = db.users.find({
+        "trial_until": {"$ne": None},
+        "trial_reminder_sent_at": {"$exists": False},
+    })
+    public_url = os.environ.get("PUBLIC_APP_URL", "").rstrip("/")
+    upgrade_url = f"{public_url}/abonnement" if public_url else "/abonnement"
+    async for u in cursor:
+        try:
+            tu = datetime.fromisoformat(u["trial_until"])
+            if tu.tzinfo is None:
+                tu = tu.replace(tzinfo=timezone.utc)
+        except Exception:
+            continue
+        if tu <= now or tu > soon:
+            continue
+        hours_left = max(1, int((tu - now).total_seconds() // 3600) + 1)
+        html = _render_trial_reminder_html(u.get("name", ""), hours_left, upgrade_url)
+        email_id = await _send_email(
+            u["email"],
+            "Votre essai Premium AMFQUEST expire bientôt",
+            html,
+        )
+        await db.users.update_one(
+            {"id": u["id"]},
+            {"$set": {
+                "trial_reminder_sent_at": datetime.now(timezone.utc).isoformat(),
+                "trial_reminder_email_id": email_id,
+            }},
+        )
+        logger.info("Trial reminder sent to %s (id=%s)", u["email"], email_id)
+
+
+async def _trial_reminder_loop():
+    interval = max(1, int(os.environ.get("TRIAL_REMINDER_SCAN_MINUTES", "10"))) * 60
+    # initial small delay so startup logs aren't crowded
+    await asyncio.sleep(5)
+    while True:
+        try:
+            await _scan_and_send_trial_reminders()
+        except Exception as e:
+            logger.exception("Trial reminder loop error: %s", e)
+        await asyncio.sleep(interval)
+
+
+# Manual trigger (admin only) – useful for QA / testing
+@api.post("/admin/trial-reminders/run")
+async def admin_trigger_trial_reminders(user=Depends(current_user)):
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Accès interdit")
+    await _scan_and_send_trial_reminders()
+    return {"ok": True}
+
+
 # ------------- Startup --------------
 @app.on_event("startup")
 async def on_startup():
@@ -615,6 +737,7 @@ async def on_startup():
     await db.questions.create_index("theme_key")
     await db.questions.create_index("is_free")
     await db.payment_transactions.create_index("session_id")
+    await db.users.create_index("trial_until")
 
     admin_email = os.environ.get("ADMIN_EMAIL", "admin@amfquest.fr").lower()
     admin_password = os.environ.get("ADMIN_PASSWORD", "Admin1234!")
@@ -637,6 +760,15 @@ async def on_startup():
         )
 
     await seed_questions_from_csv()
+
+    # Configure Resend
+    resend_key = os.environ.get("RESEND_API_KEY")
+    if resend_key:
+        resend.api_key = resend_key
+        app.state.trial_reminder_task = asyncio.create_task(_trial_reminder_loop())
+        logger.info("Resend configured, trial reminder scheduler started")
+    else:
+        logger.warning("RESEND_API_KEY not set, trial reminders disabled")
 
 
 @app.on_event("shutdown")
