@@ -58,7 +58,27 @@ export default function Dashboard() {
         </div>
       )}
 
-      {isPremium && trialActive && trialUntil && (
+          {
+      isPremium && (
+        <div className="mt-10 border-2 border-emerald-600 bg-emerald-50 p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div>
+            <div className="overline text-emerald-700">PREMIUM ACTIF</div>
+            <h3 className="font-heading text-xl font-bold mt-1">
+              Votre accès Premium est actif jusqu'au{" "}
+              {new Date(user.subscription_until).toLocaleString("fr-FR", {
+                dateStyle: "medium",
+                timeStyle: "short",
+              })}
+            </h3>
+            <p className="text-zinc-600 text-sm mt-1">
+              Accès illimité aux 2 389 questions, aux 15 thèmes et à l'examen blanc.
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+      {!isPremium && trialActive && trialUntil && (
         <div className="mt-10 border-2 border-[#F59E0B] bg-amber-50 p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4" data-testid="dashboard-trial-banner">
           <div className="flex items-start gap-4">
             <Clock className="text-amber-600 mt-1" />
