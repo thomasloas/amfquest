@@ -4,6 +4,7 @@ from pathlib import Path
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
 
+import stripe
 import os
 import csv
 import uuid
@@ -371,14 +372,27 @@ async def create_checkout(payload: CheckoutIn, user=Depends(current_user)):
     api_key = os.environ.get("STRIPE_API_KEY")
     if not api_key:
         raise HTTPException(status_code=500, detail="Stripe non configuré")
+
+    stripe.api_key = api_key
+
     origin = payload.origin_url.rstrip("/")
     success_url = f"{origin}/paiement-succes?session_id={{CHECKOUT_SESSION_ID}}"
     cancel_url = f"{origin}/abonnement"
-    webhook_url = ""  # not used here, polling
-    stripe_checkout = StripeCheckout(api_key=api_key, webhook_url=webhook_url)
-    req = CheckoutSessionRequest(
-        amount=float(PREMIUM_PRICE_EUR),
-        currency="eur",
+
+    session = stripe.checkout.Session.create(
+        mode="payment",
+        payment_method_types=["card"],
+        customer_email=user["email"],
+        line_items=[{
+            "price_data": {
+                "currency": "eur",
+                "product_data": {
+                    "name": "AMFQUEST Premium - 30 jours",
+                },
+                "unit_amount": int(float(PREMIUM_PRICE_EUR) * 100),
+            },
+            "quantity": 1,
+        }],
         success_url=success_url,
         cancel_url=cancel_url,
         metadata={
@@ -387,9 +401,9 @@ async def create_checkout(payload: CheckoutIn, user=Depends(current_user)):
             "product": "amfquest_premium_30d",
         },
     )
-    session = await stripe_checkout.create_checkout_session(req)
+
     await db.payment_transactions.insert_one({
-        "session_id": session.session_id,
+        "session_id": session.id,
         "user_id": user["id"],
         "user_email": user["email"],
         "amount": float(PREMIUM_PRICE_EUR),
@@ -399,36 +413,51 @@ async def create_checkout(payload: CheckoutIn, user=Depends(current_user)):
         "metadata": {"product": "amfquest_premium_30d"},
         "created_at": datetime.now(timezone.utc).isoformat(),
     })
-    return {"url": session.url, "session_id": session.session_id}
 
+    return {"url": session.url, "session_id": session.id}
 
 @api.get("/subscription/status/{session_id}")
 async def subscription_status(session_id: str, user=Depends(current_user)):
     api_key = os.environ.get("STRIPE_API_KEY")
-    stripe_checkout = StripeCheckout(api_key=api_key, webhook_url="")
-    tx = await db.payment_transactions.find_one({"session_id": session_id, "user_id": user["id"]})
+    if not api_key:
+        raise HTTPException(status_code=500, detail="Stripe non configuré")
+
+    stripe.api_key = api_key
+
+    tx = await db.payment_transactions.find_one({
+        "session_id": session_id,
+        "user_id": user["id"]
+    })
+
     if not tx:
         raise HTTPException(status_code=404, detail="Transaction introuvable")
-    # Already processed (idempotent guard)
+
     if tx.get("payment_status") == "paid":
         u = await db.users.find_one({"id": user["id"]})
         return {
-            "payment_status": "paid", "status": "complete",
+            "payment_status": "paid",
+            "status": "complete",
             "subscription_until": u.get("subscription_until"),
         }
-    status = await stripe_checkout.get_checkout_status(session_id)
-    payment_status = status.payment_status
+
+    session = stripe.checkout.Session.retrieve(session_id)
+
+    payment_status = session.payment_status
+    status = session.status
+
     update = {
         "payment_status": payment_status,
-        "status": status.status,
+        "status": status,
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
+
     sub_until = None
+
     if payment_status == "paid" and tx.get("payment_status") != "paid":
-        # Extend subscription
         u = await db.users.find_one({"id": user["id"]})
         current = u.get("subscription_until")
         base = datetime.now(timezone.utc)
+
         if current:
             try:
                 cur_dt = datetime.fromisoformat(current)
@@ -438,17 +467,31 @@ async def subscription_status(session_id: str, user=Depends(current_user)):
                     base = cur_dt
             except Exception:
                 pass
+
         new_until = (base + timedelta(days=PREMIUM_DURATION_DAYS)).isoformat()
-        await db.users.update_one({"id": user["id"]}, {"$set": {"subscription_until": new_until}})
+
+        await db.users.update_one(
+            {"id": user["id"]},
+            {"$set": {"subscription_until": new_until}}
+        )
+
         sub_until = new_until
-    await db.payment_transactions.update_one({"session_id": session_id}, {"$set": update})
+
+    await db.payment_transactions.update_one(
+        {"session_id": session_id},
+        {"$set": update}
+    )
+
     if sub_until is None:
         u = await db.users.find_one({"id": user["id"]})
         sub_until = u.get("subscription_until")
+
     return {
-        "payment_status": payment_status, "status": status.status,
+        "payment_status": payment_status,
+        "status": status,
         "subscription_until": sub_until,
     }
+
 
 
 @api.post("/webhook/stripe")
