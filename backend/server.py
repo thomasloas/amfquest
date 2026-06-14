@@ -29,9 +29,9 @@ from seed_data import (
     get_theme_by_csv, get_theme_by_key,
 )
 
-from emergentintegrations.payments.stripe.checkout import (
-    StripeCheckout, CheckoutSessionRequest,
-)
+# from emergentintegrations.payments.stripe.checkout import (
+#    StripeCheckout, CheckoutSessionRequest,
+# )
 
 import asyncio
 import resend
