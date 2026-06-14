@@ -29,7 +29,7 @@ export default function Register() {
       <div className="overline mb-4">INSCRIPTION</div>
       <h1 className="font-heading text-4xl tracking-tighter font-black">Créez votre compte AMFQUEST.</h1>
       <div className="mt-4 border-2 border-amber-500 bg-amber-50 p-4 text-sm text-amber-900" data-testid="trial-pitch">
-        <strong>Bonus inscription :</strong> 24h d'accès Premium offert (2 389 questions + examen blanc). Aucune carte bancaire requise.
+        <strong>Bonus inscription :</strong> 48h d'accès Premium illimité offert (2 389 questions + examen blanc). Aucune carte bancaire requise.
       </div>
       <form onSubmit={onSubmit} className="mt-8 space-y-5 border border-zinc-200 bg-white p-8">
         <div>

@@ -63,14 +63,14 @@ export default function Quiz() {
 
   const pick = async (i) => {
     if (selected !== undefined && !isExam) return; // training: lock after first pick
-    setAnswers({ ...answers, [q.id]: i });
+    setAnswers((prev) => ({ ...prev, [q.id]: i }));
     try {
       await api.post(`/sessions/${sessionId}/answer`, { question_id: q.id, selected_index: i });
       if (!isExam) {
         // Fetch correction
         try {
           const { data } = await api.post(`/sessions/${sessionId}/finish-question`, { question_id: q.id });
-          setRevealed({ ...revealed, [q.id]: data });
+          setRevealed((prev) => ({ ...prev, [q.id]: data }));
         } catch (_) { /* fallback: dont reveal */ }
       }
     } catch (_) {}
@@ -91,9 +91,19 @@ export default function Quiz() {
         </div>
         <div className="flex items-center gap-3">
           {isExam ? (
-            <div data-testid="quiz-timer" className="flex items-center gap-2 border border-zinc-300 px-4 py-2 font-mono-ibm font-bold text-lg">
-              <Clock size={16} /> {fmtTime(remaining)}
-            </div>
+            <>
+              <div data-testid="quiz-timer" className="flex items-center gap-2 border border-zinc-300 px-4 py-2 font-mono-ibm font-bold text-lg">
+                <Clock size={16} /> {fmtTime(remaining)}
+              </div>
+              <button
+                data-testid="quiz-finish-anytime"
+                onClick={finishExam}
+                disabled={submitting || answered === 0}
+                className="btn-secondary !py-2 !px-4 text-sm disabled:opacity-40"
+              >
+                Terminer
+              </button>
+            </>
           ) : (
             <button
               data-testid="quiz-finish-anytime"
@@ -107,6 +117,41 @@ export default function Quiz() {
           )}
         </div>
       </div>
+
+      {isExam && (
+        <div className="border border-zinc-200 bg-white p-4 mb-6" data-testid="exam-navigator">
+          <div className="flex items-center justify-between mb-3">
+            <div className="overline text-zinc-500">NAVIGATION RAPIDE</div>
+            <div className="flex items-center gap-3 text-xs text-zinc-500">
+              <span className="inline-flex items-center gap-1"><span className="inline-block w-3 h-3 bg-green-500"></span> Répondue</span>
+              <span className="inline-flex items-center gap-1"><span className="inline-block w-3 h-3 border border-zinc-400 bg-white"></span> Non répondue</span>
+            </div>
+          </div>
+          <div className="grid grid-cols-10 sm:grid-cols-12 md:grid-cols-15 lg:grid-cols-20 gap-1" style={{gridTemplateColumns: "repeat(auto-fill,minmax(36px,1fr))"}}>
+            {session.questions.map((qq, i) => {
+              const ans = answers[qq.id] !== undefined;
+              const current = i === idx;
+              return (
+                <button
+                  key={qq.id}
+                  data-testid={`nav-q-${i}`}
+                  onClick={() => setIdx(i)}
+                  className={`h-9 text-xs font-mono-ibm font-bold border transition-colors ${
+                    current
+                      ? "border-[#002FA7] border-2 bg-[#002FA7] text-white"
+                      : ans
+                        ? "border-green-600 bg-green-500 text-white hover:bg-green-600"
+                        : "border-zinc-300 bg-white hover:border-[#002FA7]"
+                  }`}
+                  title={`Question ${i + 1}${ans ? " · répondue" : ""}`}
+                >
+                  {i + 1}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="h-2 bg-zinc-200 mb-8">
         <div className="h-full bg-[#002FA7]" style={{ width: `${((idx + 1) / total) * 100}%` }} />

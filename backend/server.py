@@ -25,7 +25,7 @@ from auth import (
 )
 from seed_data import (
     THEMES, FREE_THEME_KEYS, FREE_QUESTIONS_PER_THEME,
-    PREMIUM_PRICE_EUR, PREMIUM_DURATION_DAYS,
+    PREMIUM_PRICE_EUR, PREMIUM_DURATION_DAYS, TRIAL_DURATION_HOURS,
     get_theme_by_csv, get_theme_by_key,
 )
 
@@ -194,7 +194,7 @@ async def register(payload: RegisterIn, response: Response):
     if await db.users.find_one({"email": email}):
         raise HTTPException(status_code=400, detail="Un compte existe déjà avec cet email")
     user_id = str(uuid.uuid4())
-    trial_until = (datetime.now(timezone.utc) + timedelta(hours=24)).isoformat()
+    trial_until = (datetime.now(timezone.utc) + timedelta(hours=TRIAL_DURATION_HOURS)).isoformat()
     user_doc = {
         "id": user_id,
         "email": email,
@@ -236,6 +236,86 @@ async def logout(response: Response):
 async def me(request: Request):
     user = await get_current_user(request, db)
     return _user_payload(user)
+
+
+class ChangeEmailIn(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class ChangePasswordIn(BaseModel):
+    current_password: str
+    new_password: str = Field(min_length=6)
+
+
+class DeleteAccountIn(BaseModel):
+    password: str
+
+
+@api.put("/auth/email")
+async def change_email(payload: ChangeEmailIn, user=Depends(current_user)):
+    full = await db.users.find_one({"id": user["id"]})
+    if not full or not verify_password(payload.password, full["password_hash"]):
+        raise HTTPException(status_code=401, detail="Mot de passe incorrect")
+    new_email = payload.email.lower()
+    if new_email == full["email"]:
+        return _user_payload(full)
+    existing = await db.users.find_one({"email": new_email})
+    if existing:
+        raise HTTPException(status_code=400, detail="Cet email est déjà utilisé")
+    await db.users.update_one({"id": user["id"]}, {"$set": {"email": new_email}})
+    full["email"] = new_email
+    return _user_payload(full)
+
+
+@api.put("/auth/password")
+async def change_password(payload: ChangePasswordIn, user=Depends(current_user)):
+    full = await db.users.find_one({"id": user["id"]})
+    if not full or not verify_password(payload.current_password, full["password_hash"]):
+        raise HTTPException(status_code=401, detail="Mot de passe actuel incorrect")
+    await db.users.update_one(
+        {"id": user["id"]},
+        {"$set": {"password_hash": hash_password(payload.new_password)}},
+    )
+    return {"ok": True}
+
+
+@api.delete("/auth/me")
+async def delete_account(payload: DeleteAccountIn, response: Response, user=Depends(current_user)):
+    full = await db.users.find_one({"id": user["id"]})
+    if not full or not verify_password(payload.password, full["password_hash"]):
+        raise HTTPException(status_code=401, detail="Mot de passe incorrect")
+    if full.get("role") == "admin":
+        raise HTTPException(status_code=403, detail="Le compte administrateur ne peut pas être supprimé")
+    await db.sessions.delete_many({"user_id": user["id"]})
+    await db.payment_transactions.delete_many({"user_id": user["id"]})
+    await db.users.delete_one({"id": user["id"]})
+    response.delete_cookie("access_token", path="/")
+    response.delete_cookie("refresh_token", path="/")
+    return {"ok": True}
+
+
+@api.post("/subscription/cancel")
+async def cancel_subscription(user=Depends(current_user)):
+    """Met fin immédiatement à l'abonnement Premium (essai ou payant)."""
+    await db.users.update_one(
+        {"id": user["id"]},
+        {"$set": {"subscription_until": None, "trial_until": None}},
+    )
+    full = await db.users.find_one({"id": user["id"]})
+    return _user_payload(full)
+
+
+@api.post("/sessions/reset")
+async def reset_history(body: dict | None = None, user=Depends(current_user)):
+    """Supprime l'historique de sessions. Si theme fourni, ne supprime que celles du thème."""
+    body = body or {}
+    theme = body.get("theme")
+    query: dict = {"user_id": user["id"]}
+    if theme:
+        query["category"] = theme
+    result = await db.sessions.delete_many(query)
+    return {"ok": True, "deleted": result.deleted_count}
 
 
 # ------------- Contact --------------
@@ -412,27 +492,18 @@ async def stripe_webhook(request: Request):
 # ------------- Sessions / Quiz --------------
 async def _pick_questions(user: dict, mode: str, category: Optional[str], count: int) -> List[dict]:
     is_premium = has_active_subscription(user)
-    # Build the pool
+    if not is_premium:
+        raise HTTPException(status_code=402, detail="Votre période d'essai est expirée. Passez Premium pour continuer.")
     query: dict = {}
     if category:
         query["theme_key"] = category
-        if not is_premium and category not in FREE_THEME_KEYS:
-            raise HTTPException(status_code=402, detail="Ce thème nécessite l'abonnement Premium.")
-    if not is_premium:
-        # restrict to free questions only
-        query["is_free"] = True
     pool = await db.questions.find(query).to_list(5000)
     if not pool:
         raise HTTPException(status_code=400, detail="Aucune question disponible pour cette sélection.")
     if mode == "exam":
         target = 120
-        if not is_premium:
-            raise HTTPException(status_code=402, detail="L'examen blanc est réservé aux abonnés Premium.")
     else:
-        target = count
-        if not is_premium:
-            target = min(target, len(pool))
-    # Sample (with replacement only if pool < target)
+        target = max(5, count)
     if len(pool) >= target:
         chosen = random.sample(pool, target)
     else:
@@ -459,7 +530,8 @@ async def start_session(body: dict, user=Depends(current_user)):
     mode = body.get("mode", "training")
     category = body.get("category") or None
     count = int(body.get("count", 10))
-    count = max(5, min(count, 50))
+    # No upper cap: caller chooses anywhere between 5 and the whole theme size.
+    count = max(5, min(count, 5000))
     questions = await _pick_questions(user, mode, category, count)
     session_id = str(uuid.uuid4())
     doc = {
@@ -473,7 +545,7 @@ async def start_session(body: dict, user=Depends(current_user)):
         "finished_at": None,
         "score": None,
         "total": len(questions),
-        "duration_seconds": 60 * 90 if mode == "exam" else None,
+        "duration_seconds": 60 * 120 if mode == "exam" else None,
     }
     await db.sessions.insert_one(doc)
     safe_qs = [
@@ -631,7 +703,7 @@ def _render_trial_reminder_html(name: str, hours_left: int, upgrade_url: str) ->
           </h1>
         </td></tr>
         <tr><td style="padding:18px 32px 0 32px;color:#52525B;font-size:15px;line-height:1.6;">
-          <p>Votre essai gratuit de 24 heures touche à sa fin. Pour continuer à accéder à&nbsp;:</p>
+          <p>Votre essai gratuit de 48 heures touche à sa fin. Pour continuer à accéder à&nbsp;:</p>
           <ul style="padding-left:18px;margin:8px 0 16px 0;">
             <li>les <b>2 389 questions</b> couvrant les 15 thèmes officiels AMF,</li>
             <li>l'<b>examen blanc chronométré</b> (120 questions · 90 min · seuil 80%),</li>
@@ -645,7 +717,7 @@ def _render_trial_reminder_html(name: str, hours_left: int, upgrade_url: str) ->
           </a>
         </td></tr>
         <tr><td style="padding:8px 32px 32px 32px;color:#A1A1AA;font-size:12px;line-height:1.5;">
-          Si vous ne souhaitez pas continuer, vous n'avez rien à faire&nbsp;: votre compte basculera automatiquement en formule gratuite (50 questions sur 2 thèmes).
+          Si vous ne souhaitez pas continuer, vous n'avez rien à faire&nbsp;: votre compte ne sera plus actif pour les entraînements à l'issue de l'essai (vous pourrez toujours vous réabonner à tout moment).
           <br/><br/>
           — L'équipe AMFQUEST
         </td></tr>

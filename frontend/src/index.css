@@ -16,6 +16,17 @@
   --accent: #E63946;
 }
 
+.dark {
+  --bg: #0A0A0A;
+  --surface: #18181B;
+  --surface-alt: #27272A;
+  --border: #3F3F46;
+  --text: #FAFAFA;
+  --text-2: #A1A1AA;
+  --brand: #4E78F2;
+  --brand-hover: #6B8FF7;
+}
+
 @layer base {
   :root {
     --background: 0 0% 98%;
@@ -156,3 +167,58 @@ input, textarea, select {
     linear-gradient(to bottom, rgba(0,0,0,0.04) 1px, transparent 1px);
   background-size: 48px 48px;
 }
+
+/* ===================== DARK MODE OVERRIDES ===================== */
+/* Strategy: keep page-level utility classes (bg-white, border-zinc-200, text-zinc-X)
+   working in dark mode by remapping them via .dark selectors. */
+.dark body, .dark html { background: var(--bg); color: var(--text); }
+.dark .bg-white { background: var(--surface) !important; }
+.dark .bg-zinc-50 { background: var(--surface-alt) !important; }
+.dark .bg-zinc-100 { background: #27272A !important; }
+.dark .border-zinc-200 { border-color: var(--border) !important; }
+.dark .border-zinc-300 { border-color: #52525B !important; }
+.dark .border-zinc-100 { border-color: var(--border) !important; }
+.dark .text-zinc-900 { color: var(--text) !important; }
+.dark .text-zinc-800 { color: #E4E4E7 !important; }
+.dark .text-zinc-700 { color: #D4D4D8 !important; }
+.dark .text-zinc-600 { color: #A1A1AA !important; }
+.dark .text-zinc-500 { color: #A1A1AA !important; }
+.dark .text-zinc-400 { color: #71717A !important; }
+.dark .hover\:bg-zinc-50:hover { background: var(--surface-alt) !important; }
+.dark .hover\:bg-amber-50:hover { background: #422006 !important; }
+.dark .bg-\[\#EFF3FF\] { background: #1E2A4F !important; }
+.dark .bg-amber-50 { background: #2A1D04 !important; }
+.dark .text-amber-700 { color: #FBBF24 !important; }
+.dark .text-amber-900 { color: #FDE68A !important; }
+.dark .border-amber-500 { border-color: #B45309 !important; }
+.dark .border-amber-600 { border-color: #92400E !important; }
+.dark .bg-green-50 { background: #052E18 !important; }
+.dark .text-green-600 { color: #34D399 !important; }
+.dark .text-green-700 { color: #6EE7B7 !important; }
+.dark .text-red-600 { color: #FCA5A5 !important; }
+.dark .border-red-500 { border-color: #B91C1C !important; }
+.dark .bg-red-50 { background: #3F0F12 !important; }
+.dark .text-\[\#002FA7\] { color: #7FA3FF !important; }
+.dark .border-\[\#002FA7\] { border-color: #4E78F2 !important; }
+.dark .bg-\[\#002FA7\] { background: #4E78F2 !important; }
+.dark .tech-card { background: var(--surface); border-color: var(--border); }
+.dark .qcm-option { background: var(--surface); border-color: var(--border); color: var(--text); }
+.dark .qcm-option.selected { background: #1E2A4F; border-color: #7FA3FF; }
+.dark .qcm-option.correct { background: #052E18; border-color: #16A34A; }
+.dark .qcm-option.incorrect { background: #3F0F12; border-color: #DC2626; }
+.dark .btn-primary { background: #4E78F2; color: #0A0A0A; }
+.dark .btn-primary:hover { background: #6B8FF7; }
+.dark .btn-secondary { color: var(--text); border-color: var(--border); background: transparent; }
+.dark .btn-secondary:hover { background: var(--surface-alt); }
+.dark input, .dark textarea, .dark select {
+  background: var(--surface); color: var(--text); border-color: var(--border);
+}
+.dark .grid-bg {
+  background-image:
+    linear-gradient(to right, rgba(255,255,255,0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,0.04) 1px, transparent 1px);
+}
+.dark header { background: var(--surface); border-color: var(--border); }
+.dark footer.bg-\[\#0A0A0A\] { background: #050505 !important; }
+.dark .overline { color: #7FA3FF; }
+.dark .bg-zinc-50.text-zinc-500 { background: var(--surface-alt) !important; color: #A1A1AA !important; }

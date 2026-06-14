@@ -29,12 +29,12 @@ export default function ExamenBlanc() {
       <div className="overline mb-3">EXAMEN BLANC</div>
       <h1 className="font-heading text-5xl tracking-tighter font-black">Conditions réelles d'examen.</h1>
       <p className="text-zinc-600 mt-4 max-w-2xl">
-        120 questions tirées aléatoirement parmi l'ensemble des 15 thèmes. 90 minutes au compteur. Seuil officiel de réussite : 80%.
+        120 questions tirées aléatoirement parmi l'ensemble des 15 thèmes. 120 minutes au compteur. Seuil officiel de réussite : 80%.
       </p>
 
       <div className="mt-12 grid sm:grid-cols-3 gap-4">
         <Stat icon={Target} label="QUESTIONS" value="120" />
-        <Stat icon={Clock} label="DURÉE" value="90 min" />
+        <Stat icon={Clock} label="DURÉE" value="120 min" />
         <Stat icon={Trophy} label="SEUIL" value="80%" />
       </div>
 

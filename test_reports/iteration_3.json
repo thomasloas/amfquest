@@ -1,0 +1,49 @@
+{
+  "summary": "Iteration 3 (AMFQUEST - 9 changements: 48h trial, no more freemium, exam navigator 120 cases, 120-min exam, account page, theme toggle, reset history). Backend: 13/13 pytest pass: register grants 48h trial (±5min tolerance), PUT /auth/email (200 happy, 401 wrong-pwd, 400 dup-email), PUT /auth/password rotates cleanly (old pwd 401, new pwd 200), POST /subscription/cancel clears trial_until+subscription_until and /me reports subscription_active=false, DELETE /auth/me removes user+sessions+transactions, admin 403, wrong-pwd 401, POST /sessions/reset {} global delete + {theme} scoped delete (other-theme session retained, deleted=0 on empty), training count=100 returns 100 questions (cap retire), exam returns 120 questions + duration_seconds=7200, trial user can access ALL 15 themes (no is_locked=true anywhere), expired trial returns 402 'essai/expir/premium' on /sessions/start. Frontend (UI verified): /inscription trial-pitch mentions '48h'; theme-toggle in navbar adds class 'dark' to <html>, persists in localStorage key 'amfquest_theme', survives reload; /compte exposes sections email/password/reset/delete/cancel; /historique exposes filter-theme + reset-all; admin entrainement custom count=100 starts quiz; /examen-blanc start-exam launches Quiz with exam-navigator containing 120 cells nav-q-0..nav-q-119, click nav-q-50 jumps to Q51, exam-timer shows ~119:56 (close to 120min).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Quiz (exam mode) - navigator cell color",
+        "issue": "After selecting an option on Q1 then clicking nav-q-1 to navigate to Q2: the header counter goes from '1 répondues' back to '0 répondues' and nav-q-0 cell stays WHITE (class 'bg-white') instead of turning green ('Répondue'). The answer appears to be lost when navigating via the navigator cells, OR the option click only updates local pending state without committing until 'Suivante' is pressed. Per spec: 'Une question répondue devient verte.' is not visually validated through navigator navigation.",
+        "selector": "[data-testid='nav-q-0'] after answering Q1 then clicking [data-testid='nav-q-1']",
+        "priority": "MEDIUM"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Investigate Quiz.js exam-mode answer persistence when user navigates via exam-navigator cells. Either (a) auto-commit current selection before navigation, or (b) ensure the navigator triggers the same save path as 'Suivante'. Without this, the green 'Répondue' badge on the navigator is unreliable and the answered counter shows 0 after navigation."
+  ],
+  "critical_code_review_comments": [
+    "server.py _pick_questions: when category has fewer questions than target it duplicates via random.choice — for exam mode (120 questions) the seed has 2389 questions so this is fine, but worth a guard to error out if a theme has <count questions on training (currently silently pads). Acceptable for now.",
+    "server.py reset_history: accepts body: dict | None — Pydantic-less raw dict. Works but consider a Pydantic model with explicit `theme: Optional[str]` for OpenAPI clarity and validation.",
+    "server.py DELETE /auth/me: uses request body via DeleteAccountIn — works but DELETE-with-body is non-standard; some HTTP clients strip the body. requests + Playwright are fine here. Consider POST /auth/account/delete for portability.",
+    "server.py cancel_subscription: sets both subscription_until=None AND trial_until=None unconditionally — if user had a paid subscription only (no trial), this is fine; if they had only a trial it's also fine; documented in docstring. OK.",
+    "ThemeContext.js: uses localStorage key 'amfquest_theme' — consistent with iteration spec, verified persistent across reload.",
+    "Quiz.js (exam-navigator): the navigator correctly shows 120 cells but answered-state styling appears to only sync to commit path, not to option-click. Either commit on click or sync the local selection to the answered set immediately."
+  ],
+  "updated_files": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/iteration_3.json",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "success_rate": {
+    "backend": "100% (13/13)",
+    "frontend": "92% (15/16 flows pass; 1 minor UI persistence issue on exam navigator)"
+  },
+  "test_credentials": "Admin: admin@amfquest.fr / Admin1234! ; New users created per-test with timestamped emails test_<tag>_<ms>@amfquest.fr / Test1234!",
+  "seed_data_creation": "Multiple timestamped users created by pytest. One admin exam session started during Playwright verification (no payment, no data mutation on admin account beyond an in-memory session).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend pytest suite at /app/backend/tests/backend_test.py (13 tests, all green) is now aligned with iteration-3 spec (no freemium, 48h trial, new account endpoints, reset endpoints, 120min exam, 100-count training). History endpoint is GET /api/sessions (NOT /sessions/history). To check exam navigator green state, either commit current answer via the 'Suivante' button or fix the navigator-based navigation to commit pending selection before changing question index. localStorage key for theme is 'amfquest_theme'.",
+  "rca of the issue": "Frontend exam-navigator 'answered → green' bug: after clicking an option button on Q1, header counter correctly shows '1 répondues' (so the answer is recorded somewhere — likely local state). However, after clicking [data-testid='nav-q-1'] to navigate to Q2, the counter returns to '0 répondues' and nav-q-0 reverts to white background. Hypothesis: Quiz.js stores the option click in a local 'selected' state that is only persisted to the session answers map when the user clicks 'Suivante'/'Précédente'. Clicking a navigator cell calls setCurrentIndex(N) without flushing the pending selection — so the answer is dropped. Reproduction: 1) Login admin, 2) Start /examen-blanc, 3) Click first option on Q1, 4) Click [data-testid='nav-q-1']. Expected: nav-q-0 green ('Répondue'). Actual: nav-q-0 white, counter 0. Mitigation: In Quiz.js, before changing currentIndex via navigator click, call the same commit/save function used by the 'Suivante' button (e.g., flush `selectedOption` into `answers[currentQuestionId]` and POST /sessions/{id}/answer). Alternatively, save the answer immediately on option click."
+}

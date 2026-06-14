@@ -56,13 +56,17 @@ THEMES = [
      "description": "Conseil en investissement, gestion sous mandat."},
 ]
 
-# Thèmes accessibles en version gratuite (50 questions, 25 par thème).
-FREE_THEME_KEYS = {"cat-a-deontologie-et-conformite", "cat-c-cadre-institutionnel-reglementaire"}
-FREE_QUESTIONS_PER_THEME = 25
-
-# Plan tarifaire
+# Période d'essai et abonnement
 PREMIUM_PRICE_EUR = 19.99
 PREMIUM_DURATION_DAYS = 30
+TRIAL_DURATION_HOURS = 48
+
+# Note historique : depuis le 13/12/2025 le freemium "50 questions sur 2 thèmes"
+# n'existe plus. À l'inscription, l'utilisateur reçoit 48h d'accès Premium gratuit
+# (tous les thèmes, toutes les questions, examen blanc inclus). Passé ce délai,
+# l'abonnement Premium est requis.
+FREE_THEME_KEYS: set = set()
+FREE_QUESTIONS_PER_THEME = 0
 
 
 def get_theme_by_key(key: str):

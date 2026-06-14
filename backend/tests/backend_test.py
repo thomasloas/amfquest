@@ -1,45 +1,64 @@
-"""AMFQUEST backend regression tests (iteration 2: freemium + Stripe)."""
+"""AMFQUEST backend regression tests – iteration 3.
+
+Covers:
+- 48h trial on registration
+- PUT /auth/email, /auth/password
+- DELETE /auth/me
+- POST /subscription/cancel
+- POST /sessions/reset (global + per theme)
+- Sessions: training count 100 (cap retiré), exam = 120 questions / 7200s
+- Expired trial / no sub -> 402 on /sessions/start
+- No more freemium (2 free themes pour anonymous categories still exposed via is_free_theme historique mais is_locked basé sur premium)
+"""
 import os
 import time
-import requests
+from datetime import datetime, timezone, timedelta
+
 import pytest
+import requests
 
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "").rstrip("/")
 if not BASE_URL:
     BASE_URL = "http://localhost:8001"
-
 API = f"{BASE_URL}/api"
 
 ADMIN_EMAIL = "admin@amfquest.fr"
 ADMIN_PASSWORD = "Admin1234!"
-
-TS = int(time.time())
-TEST_EMAIL = f"test_user_{TS}@amfquest.fr"
 TEST_PASSWORD = "Test1234!"
-TEST_NAME = "Test User"
+PREMIUM_THEME = "cat-a-blanchiment-dargent"
 
-FREE_THEME_KEYS = {"cat-a-deontologie-et-conformite", "cat-c-cadre-institutionnel-reglementaire"}
-PREMIUM_THEME_EXAMPLE = "cat-a-blanchiment-dargent"
+
+def _fresh_email(tag: str) -> str:
+    return f"test_{tag}_{int(time.time()*1000)}@amfquest.fr"
+
+
+def _register(email: str, password: str = TEST_PASSWORD):
+    r = requests.post(f"{API}/auth/register",
+                      json={"email": email, "password": password, "name": "Test"})
+    assert r.status_code == 200, r.text
+    return r.json()["access_token"]
+
+
+def _login(email: str, password: str):
+    return requests.post(f"{API}/auth/login", json={"email": email, "password": password})
+
+
+def _h(tok: str):
+    return {"Authorization": f"Bearer {tok}"}
 
 
 @pytest.fixture(scope="module")
-def s():
-    return requests.Session()
-
-
-@pytest.fixture(scope="module")
-def user_token(s):
-    r = s.post(f"{API}/auth/register",
-               json={"email": TEST_EMAIL, "password": TEST_PASSWORD, "name": TEST_NAME})
+def admin_token():
+    r = _login(ADMIN_EMAIL, ADMIN_PASSWORD)
     assert r.status_code == 200, r.text
     return r.json()["access_token"]
 
 
 @pytest.fixture(scope="module")
-def admin_token(s):
-    r = s.post(f"{API}/auth/login", json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD})
-    assert r.status_code == 200, r.text
-    return r.json()["access_token"]
+def trial_user():
+    email = _fresh_email("trial")
+    tok = _register(email)
+    return {"email": email, "password": TEST_PASSWORD, "token": tok}
 
 
 # ---------- Health ----------
@@ -49,194 +68,215 @@ def test_health():
     assert r.json().get("ok") is True
 
 
-# ---------- Categories ----------
-def test_categories_anonymous_15_themes():
-    r = requests.get(f"{API}/categories")
-    assert r.status_code == 200
-    cats = r.json()
-    assert isinstance(cats, list)
-    assert len(cats) == 15, f"expected 15 themes, got {len(cats)}"
-    free_themes = [c for c in cats if c["is_free_theme"]]
-    assert len(free_themes) == 2
-    free_keys = {c["key"] for c in free_themes}
-    assert free_keys == FREE_THEME_KEYS
-    # Anonymous: premium themes are locked, free themes unlocked
-    for c in cats:
-        assert c["question_count"] > 0
-        if c["is_free_theme"]:
-            assert c["free_count"] == 25, f"{c['key']} free_count={c['free_count']}"
-            assert c["is_locked"] is False
-        else:
-            assert c["is_locked"] is True
-
-
-def test_categories_free_user_locks_premium(user_token):
-    r = requests.get(f"{API}/categories",
-                     headers={"Authorization": f"Bearer {user_token}"})
-    assert r.status_code == 200
-    cats = r.json()
-    for c in cats:
-        if c["key"] in FREE_THEME_KEYS:
-            assert c["is_locked"] is False
-        else:
-            assert c["is_locked"] is True
-
-
-def test_categories_admin_all_unlocked(admin_token):
-    r = requests.get(f"{API}/categories",
-                     headers={"Authorization": f"Bearer {admin_token}"})
-    assert r.status_code == 200
-    cats = r.json()
-    for c in cats:
-        assert c["is_locked"] is False, f"{c['key']} still locked for admin"
-
-
-# ---------- /me with subscription fields ----------
-def test_me_has_subscription_fields(user_token):
-    r = requests.get(f"{API}/auth/me",
-                     headers={"Authorization": f"Bearer {user_token}"})
+# ---------- 48h trial on register ----------
+def test_register_grants_48h_trial():
+    email = _fresh_email("48h")
+    tok = _register(email)
+    r = requests.get(f"{API}/auth/me", headers=_h(tok))
     assert r.status_code == 200
     body = r.json()
-    assert body["email"] == TEST_EMAIL
-    assert "subscription_active" in body
-    assert "subscription_until" in body
-    assert body["subscription_active"] is False
+    assert body["email"] == email
+    assert body.get("subscription_active") is True
+    trial = body.get("trial_until")
+    assert trial, "trial_until missing on /me"
+    tu = datetime.fromisoformat(trial)
+    if tu.tzinfo is None:
+        tu = tu.replace(tzinfo=timezone.utc)
+    delta = tu - datetime.now(timezone.utc)
+    # ~48h ± 5 min tolerance
+    assert timedelta(hours=47, minutes=55) < delta < timedelta(hours=48, minutes=5), \
+        f"trial_until delta = {delta}"
 
 
-def test_me_admin_subscription_active(admin_token):
-    r = requests.get(f"{API}/auth/me",
-                     headers={"Authorization": f"Bearer {admin_token}"})
+# ---------- /trial-pitch context: inscription page mentions 48h (only frontend) ----------
+
+
+# ---------- PUT /auth/email ----------
+def test_change_email_flow():
+    email = _fresh_email("email1")
+    tok = _register(email)
+    # wrong password
+    r = requests.put(f"{API}/auth/email", headers=_h(tok),
+                     json={"email": _fresh_email("email1b"), "password": "BadPass1!"})
+    assert r.status_code == 401
+
+    # success
+    new_email = _fresh_email("email1c")
+    r = requests.put(f"{API}/auth/email", headers=_h(tok),
+                     json={"email": new_email, "password": TEST_PASSWORD})
+    assert r.status_code == 200, r.text
+    assert r.json()["email"] == new_email
+    # /me shows new email
+    r = requests.get(f"{API}/auth/me", headers=_h(tok))
+    assert r.json()["email"] == new_email
+
+    # email already used (register another, then try to take it)
+    other_email = _fresh_email("email1d")
+    _register(other_email)
+    r = requests.put(f"{API}/auth/email", headers=_h(tok),
+                     json={"email": other_email, "password": TEST_PASSWORD})
+    assert r.status_code == 400
+
+
+# ---------- PUT /auth/password ----------
+def test_change_password_flow():
+    email = _fresh_email("pwd")
+    tok = _register(email)
+    new_pwd = "Brand1New!"
+    r = requests.put(f"{API}/auth/password", headers=_h(tok),
+                     json={"current_password": TEST_PASSWORD, "new_password": new_pwd})
+    assert r.status_code == 200, r.text
+    # old password no longer works
+    r = _login(email, TEST_PASSWORD)
+    assert r.status_code == 401
+    # new password works
+    r = _login(email, new_pwd)
     assert r.status_code == 200
+
+
+# ---------- POST /subscription/cancel ----------
+def test_cancel_subscription_clears_trial():
+    email = _fresh_email("cancel")
+    tok = _register(email)
+    # active before
+    r = requests.get(f"{API}/auth/me", headers=_h(tok))
     assert r.json()["subscription_active"] is True
+    # cancel
+    r = requests.post(f"{API}/subscription/cancel", headers=_h(tok))
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body.get("subscription_until") in (None, "")
+    assert body.get("trial_until") in (None, "")
+    assert body.get("subscription_active") is False
+    # /me confirms
+    r = requests.get(f"{API}/auth/me", headers=_h(tok))
+    assert r.json()["subscription_active"] is False
 
 
-# ---------- Sessions paywall ----------
-def test_start_session_premium_theme_blocked_for_free(user_token):
-    h = {"Authorization": f"Bearer {user_token}"}
-    r = requests.post(f"{API}/sessions/start", headers=h,
-                      json={"mode": "training", "category": PREMIUM_THEME_EXAMPLE, "count": 10})
-    assert r.status_code == 402
-    detail = r.json().get("detail", "")
-    assert "Premium" in detail
+# ---------- DELETE /auth/me ----------
+def test_delete_account_flow():
+    email = _fresh_email("del")
+    tok = _register(email)
+    # wrong password
+    r = requests.request("DELETE", f"{API}/auth/me", headers=_h(tok),
+                         json={"password": "Wrong1!"})
+    assert r.status_code == 401
+    # success
+    r = requests.request("DELETE", f"{API}/auth/me", headers=_h(tok),
+                         json={"password": TEST_PASSWORD})
+    assert r.status_code == 200, r.text
+    # /me must now fail (user gone -> 401)
+    r = requests.get(f"{API}/auth/me", headers=_h(tok))
+    assert r.status_code in (401, 404)
 
 
-def test_start_exam_blocked_for_free(user_token):
-    h = {"Authorization": f"Bearer {user_token}"}
-    r = requests.post(f"{API}/sessions/start", headers=h, json={"mode": "exam"})
-    assert r.status_code == 402
-    detail = r.json().get("detail", "")
-    assert "examen blanc" in detail.lower() or "premium" in detail.lower()
+def test_admin_cannot_delete_self(admin_token):
+    r = requests.request("DELETE", f"{API}/auth/me", headers=_h(admin_token),
+                         json={"password": ADMIN_PASSWORD})
+    assert r.status_code == 403
 
 
-def test_start_training_free_user_uses_free_pool(user_token):
-    h = {"Authorization": f"Bearer {user_token}"}
-    r = requests.post(f"{API}/sessions/start", headers=h,
-                      json={"mode": "training", "count": 50})
+# ---------- POST /sessions/reset ----------
+def test_reset_history_global_and_by_theme(trial_user):
+    tok = trial_user["token"]
+    # start 2 sessions on 2 different themes
+    r1 = requests.post(f"{API}/sessions/start", headers=_h(tok),
+                       json={"mode": "training", "category": PREMIUM_THEME, "count": 5})
+    assert r1.status_code == 200, r1.text
+    other_theme = "cat-a-deontologie-et-conformite"
+    r2 = requests.post(f"{API}/sessions/start", headers=_h(tok),
+                       json={"mode": "training", "category": other_theme, "count": 5})
+    assert r2.status_code == 200, r2.text
+
+    # reset only PREMIUM_THEME
+    r = requests.post(f"{API}/sessions/reset", headers=_h(tok),
+                      json={"theme": PREMIUM_THEME})
     assert r.status_code == 200
+    body = r.json()
+    assert body["ok"] is True
+    assert body["deleted"] >= 1
+
+    # other theme session must remain
+    r = requests.get(f"{API}/sessions", headers=_h(tok))
+    assert r.status_code == 200
+    history = r.json()
+    remaining_cats = {s.get("category") for s in history}
+    assert other_theme in remaining_cats
+    assert PREMIUM_THEME not in remaining_cats
+
+    # global reset
+    r = requests.post(f"{API}/sessions/reset", headers=_h(tok), json={})
+    assert r.status_code == 200
+    assert r.json()["ok"] is True
+    r = requests.get(f"{API}/sessions", headers=_h(tok))
+    assert r.json() == []
+
+    # second global reset -> deleted == 0
+    r = requests.post(f"{API}/sessions/reset", headers=_h(tok), json={})
+    assert r.status_code == 200
+    assert r.json()["deleted"] == 0
+
+
+# ---------- Sessions: cap retiré, training count 100 ----------
+def test_training_count_100_no_cap(trial_user):
+    tok = trial_user["token"]
+    r = requests.post(f"{API}/sessions/start", headers=_h(tok),
+                      json={"mode": "training", "category": PREMIUM_THEME, "count": 100})
+    assert r.status_code == 200, r.text
     data = r.json()
-    # Free pool = 25+25 = 50 unique. count capped at min(50, pool) -> exactly 50
-    assert len(data["questions"]) <= 50
-    # Validate option array length = 3
+    assert len(data["questions"]) == 100
+    # options stripped + correct_index hidden
     for q in data["questions"]:
         assert len(q["options"]) == 3
         assert "correct_index" not in q
 
 
-def test_start_training_free_user_free_themes_only_allowed(user_token):
-    h = {"Authorization": f"Bearer {user_token}"}
-    for k in FREE_THEME_KEYS:
-        r = requests.post(f"{API}/sessions/start", headers=h,
-                         json={"mode": "training", "category": k, "count": 10})
-        assert r.status_code == 200, f"{k}: {r.text}"
-        assert len(r.json()["questions"]) == 10
-
-
-# ---------- Reveal question (training mode) ----------
-def test_finish_question_reveal_training(user_token):
-    h = {"Authorization": f"Bearer {user_token}"}
-    r = requests.post(f"{API}/sessions/start", headers=h,
-                      json={"mode": "training", "count": 5})
-    assert r.status_code == 200
-    sess = r.json()
-    sid = sess["id"]
-    qid = sess["questions"][0]["id"]
-    r = requests.post(f"{API}/sessions/{sid}/finish-question", headers=h,
-                      json={"question_id": qid})
+# ---------- Exam 120 questions / 7200s ----------
+def test_exam_120_questions_7200s(trial_user):
+    tok = trial_user["token"]
+    r = requests.post(f"{API}/sessions/start", headers=_h(tok),
+                      json={"mode": "exam"})
     assert r.status_code == 200, r.text
-    body = r.json()
-    assert "correct_index" in body
-    assert "explanation" in body
-    assert "source" in body
-    assert body["question_id"] == qid
-
-
-def test_finish_question_blocked_in_exam(admin_token):
-    # admin is premium, so exam mode is allowed
-    h = {"Authorization": f"Bearer {admin_token}"}
-    r = requests.post(f"{API}/sessions/start", headers=h, json={"mode": "exam"})
-    assert r.status_code == 200
-    sess = r.json()
-    sid = sess["id"]
-    qid = sess["questions"][0]["id"]
-    r = requests.post(f"{API}/sessions/{sid}/finish-question", headers=h,
-                     json={"question_id": qid})
-    assert r.status_code == 400
-
-
-# ---------- Admin (premium) exam flow ----------
-def test_admin_exam_120_questions(admin_token):
-    h = {"Authorization": f"Bearer {admin_token}"}
-    r = requests.post(f"{API}/sessions/start", headers=h, json={"mode": "exam"})
-    assert r.status_code == 200
     data = r.json()
+    assert data["total"] == 120
     assert len(data["questions"]) == 120
-    assert data["duration_seconds"] == 5400
+    assert data["duration_seconds"] == 7200, f"got duration_seconds={data['duration_seconds']}"
 
 
-def test_admin_premium_theme_allowed(admin_token):
-    h = {"Authorization": f"Bearer {admin_token}"}
-    r = requests.post(f"{API}/sessions/start", headers=h,
-                     json={"mode": "training", "category": PREMIUM_THEME_EXAMPLE, "count": 10})
+# ---------- Expired trial / no sub -> 402 ----------
+def test_expired_trial_blocks_sessions():
+    """Force expire by canceling, then /sessions/start must return 402."""
+    email = _fresh_email("expired")
+    tok = _register(email)
+    # cancel removes trial entirely
+    r = requests.post(f"{API}/subscription/cancel", headers=_h(tok))
     assert r.status_code == 200
-    assert len(r.json()["questions"]) == 10
+    # any /sessions/start now must 402
+    r = requests.post(f"{API}/sessions/start", headers=_h(tok),
+                      json={"mode": "training", "category": PREMIUM_THEME, "count": 10})
+    assert r.status_code == 402, r.text
+    detail = r.json().get("detail", "").lower()
+    assert ("essai" in detail) or ("premium" in detail) or ("expir" in detail)
+
+    # exam mode same result
+    r = requests.post(f"{API}/sessions/start", headers=_h(tok), json={"mode": "exam"})
+    assert r.status_code == 402
 
 
-# ---------- Subscription checkout ----------
-def test_subscription_checkout_returns_stripe_url(user_token):
-    h = {"Authorization": f"Bearer {user_token}"}
-    r = requests.post(f"{API}/subscription/checkout", headers=h,
-                      json={"origin_url": BASE_URL})
-    assert r.status_code == 200, r.text
-    body = r.json()
-    assert "url" in body and body["url"].startswith("https://")
-    assert "session_id" in body and len(body["session_id"]) > 5
-
-
-def test_subscription_checkout_requires_auth():
-    r = requests.post(f"{API}/subscription/checkout",
-                      json={"origin_url": BASE_URL})
-    assert r.status_code in (401, 403)
-
-
-# ---------- Existing flows still work ----------
-def test_register_duplicate(s):
-    r = s.post(f"{API}/auth/register",
-              json={"email": TEST_EMAIL, "password": TEST_PASSWORD, "name": TEST_NAME})
-    assert r.status_code == 400
-
-
-def test_login_wrong_password(s):
-    r = s.post(f"{API}/auth/login", json={"email": TEST_EMAIL, "password": "WrongPass!"})
-    assert r.status_code == 401
-
-
-def test_login_correct(s):
-    r = s.post(f"{API}/auth/login", json={"email": TEST_EMAIL, "password": TEST_PASSWORD})
+# ---------- Trial user can access all themes (no more freemium) ----------
+def test_trial_user_can_access_all_themes(trial_user):
+    tok = trial_user["token"]
+    r = requests.get(f"{API}/categories", headers=_h(tok))
     assert r.status_code == 200
-    assert "access_token" in r.json()
+    cats = r.json()
+    assert len(cats) == 15
+    # trial user has active sub -> nothing should be locked
+    locked = [c for c in cats if c.get("is_locked")]
+    assert locked == [], f"trial user sees locked themes: {[c['key'] for c in locked]}"
 
 
-def test_logout_endpoint(s):
-    r = s.post(f"{API}/auth/logout")
+# ---------- Admin still works ----------
+def test_admin_me_premium(admin_token):
+    r = requests.get(f"{API}/auth/me", headers=_h(admin_token))
     assert r.status_code == 200
-    assert r.json().get("ok") is True
+    assert r.json()["subscription_active"] is True

@@ -63,7 +63,7 @@ export default function Dashboard() {
           <div className="flex items-start gap-4">
             <Clock className="text-amber-600 mt-1" />
             <div>
-              <div className="overline text-amber-700">ESSAI PREMIUM · 24H</div>
+              <div className="overline text-amber-700">ESSAI PREMIUM · 48H</div>
               <h3 className="font-heading text-xl font-bold mt-1">Votre essai gratuit expire le {trialUntil.toLocaleString("fr-FR", { dateStyle: "medium", timeStyle: "short" })}.</h3>
               <p className="text-zinc-600 text-sm mt-1">Profitez de l'accès complet jusqu'à la fin de l'essai, puis passez Premium pour conserver vos avantages.</p>
             </div>

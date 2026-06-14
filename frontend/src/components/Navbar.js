@@ -1,6 +1,7 @@
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { LogOut, Menu, Sparkles, X } from "lucide-react";
+import { useTheme } from "@/contexts/ThemeContext";
+import { LogOut, Menu, Moon, Settings, Sparkles, Sun, X } from "lucide-react";
 import { useState } from "react";
 
 const linkBase = "text-sm font-semibold tracking-wide hover:text-[#002FA7] transition-colors";
@@ -8,6 +9,7 @@ const linkActive = "text-[#002FA7]";
 
 export default function Navbar() {
   const { user, logout } = useAuth();
+  const { theme, toggle } = useTheme();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const isPremium = !!user?.subscription_active;
@@ -28,11 +30,19 @@ export default function Navbar() {
           <NavLink data-testid="nav-contact" to="/contact" className={({isActive}) => `${linkBase} ${isActive ? linkActive : "text-zinc-700"}`}>Contact</NavLink>
         </nav>
         <div className="hidden md:flex items-center gap-3">
+          <button
+            data-testid="theme-toggle"
+            onClick={toggle}
+            aria-label={theme === "dark" ? "Activer le mode clair" : "Activer le mode sombre"}
+            className="w-9 h-9 inline-flex items-center justify-center border border-zinc-300 hover:border-[#002FA7] transition-colors"
+          >
+            {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+          </button>
           {user ? (
             <>
               {isPremium ? (
                 trialActive ? (
-                  <Link to="/abonnement" data-testid="nav-trial-badge" className="text-xs font-bold tracking-wider px-2 py-1 border border-amber-600 text-amber-700 hover:bg-amber-50">ESSAI 24H</Link>
+                  <Link to="/abonnement" data-testid="nav-trial-badge" className="text-xs font-bold tracking-wider px-2 py-1 border border-amber-600 text-amber-700 hover:bg-amber-50">ESSAI 48H</Link>
                 ) : (
                   <span data-testid="nav-premium-badge" className="text-xs font-bold tracking-wider px-2 py-1 border border-[#059669] text-[#059669]">PREMIUM</span>
                 )
@@ -42,6 +52,9 @@ export default function Navbar() {
                 </Link>
               )}
               <Link to="/tableau-de-bord" data-testid="nav-dashboard" className="btn-secondary !py-2 !px-4 text-sm">Mon tableau</Link>
+              <Link to="/compte" data-testid="nav-compte" aria-label="Mon compte" className="w-9 h-9 inline-flex items-center justify-center border border-zinc-300 hover:border-[#002FA7]">
+                <Settings size={16} />
+              </Link>
               <button data-testid="nav-logout" onClick={async () => { await logout(); navigate("/"); }} className="btn-secondary !py-2 !px-3 text-sm" aria-label="Déconnexion">
                 <LogOut size={14} />
               </button>
@@ -67,7 +80,11 @@ export default function Navbar() {
             {user ? (
               <>
                 <Link to="/abonnement" onClick={() => setOpen(false)} className={linkBase}>Abonnement</Link>
+                <Link to="/compte" onClick={() => setOpen(false)} className={linkBase}>Mon compte</Link>
                 <Link to="/tableau-de-bord" onClick={() => setOpen(false)} className="btn-secondary !py-2 !px-4 text-sm justify-center">Mon tableau</Link>
+                <button onClick={() => { toggle(); setOpen(false); }} className="btn-secondary !py-2 !px-4 text-sm justify-center">
+                  {theme === "dark" ? "Mode clair" : "Mode sombre"}
+                </button>
                 <button onClick={async () => { await logout(); setOpen(false); navigate("/"); }} className="btn-primary !py-2 !px-4 text-sm justify-center">Déconnexion</button>
               </>
             ) : (
