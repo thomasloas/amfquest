@@ -332,7 +332,22 @@ async def create_contact(payload: ContactIn):
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     await db.contacts.insert_one(doc)
-    return {"ok": True, "id": doc["id"]}
+
+    await _send_email(
+        os.environ.get("CONTACT_RECEIVER_EMAIL", "contact@amfquest.fr"),
+        f"Nouveau message AMFQUEST - {doc['subject']}",
+        f"""
+        <h2>Nouveau message depuis AMFQUEST</h2>
+        <p><b>Nom :</b> {doc['name']}</p>
+        <p><b>Email :</b> {doc['email']}</p>
+        <p><b>Téléphone :</b> {doc['phone']}</p>
+        <p><b>Sujet :</b> {doc['subject']}</p>
+        <p><b>Message :</b></p>
+        <p>{doc['message']}</p>
+        """
+    )
+
+return {"ok": True, "id": doc["id"]}
 
 
 @api.get("/contact")
