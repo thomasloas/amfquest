@@ -34,11 +34,26 @@ export default function Footer() {
         </div>
       </div>
       <div className="border-t border-zinc-800">
-        <div className="max-w-7xl mx-auto px-6 lg:px-10 py-6 flex flex-col md:flex-row justify-between gap-2 text-xs text-zinc-500">
-          <p>© {new Date().getFullYear()} AMFQUEST. Plateforme indépendante de préparation à l'examen AMF.</p>
-          <p>Mentions légales · CGU · Politique de confidentialité</p>
+      <div className="max-w-7xl mx-auto px-6 lg:px-10 py-6 flex flex-col md:flex-row justify-between gap-2 text-xs text-zinc-500">
+        <p>
+          © {new Date().getFullYear()} AMFQUEST. Plateforme indépendante de préparation à l'examen AMF.
+        </p>
+    
+        <div className="flex flex-wrap gap-4">
+          <Link to="/mentions-legales" className="hover:text-white">
+            Mentions légales
+          </Link>
+    
+          <Link to="/cgv" className="hover:text-white">
+            CGV
+          </Link>
+    
+          <Link to="/politique-confidentialite" className="hover:text-white">
+            Politique de confidentialité
+          </Link>
         </div>
       </div>
+    </div>
     </footer>
   );
 }
