@@ -22,6 +22,9 @@ import Historique from "@/pages/Historique";
 import Abonnement from "@/pages/Abonnement";
 import PaiementSucces from "@/pages/PaiementSucces";
 import Compte from "@/pages/Compte";
+import LegalNotice from "@/pages/LegalNotice";
+import Terms from "@/pages/Terms";
+import PrivacyPolicy from "@/pages/PrivacyPolicy";
 
 function App() {
   return (
@@ -46,6 +49,9 @@ function App() {
                 <Route path="/abonnement" element={<ProtectedRoute><Abonnement /></ProtectedRoute>} />
                 <Route path="/paiement-succes" element={<ProtectedRoute><PaiementSucces /></ProtectedRoute>} />
                 <Route path="/compte" element={<ProtectedRoute><Compte /></ProtectedRoute>} />
+                <Route path="/mentions-legales" element={<LegalNotice />} />
+                <Route path="/cgv" element={<Terms />} />
+                <Route path="/politique-confidentialite" element={<PrivacyPolicy />} />
               </Route>
             </Routes>
           </BrowserRouter>
