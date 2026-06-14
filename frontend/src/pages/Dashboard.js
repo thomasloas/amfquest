@@ -58,8 +58,7 @@ export default function Dashboard() {
         </div>
       )}
 
-          {
-      isPremium && (
+            {isPremium && (
         <div className="mt-10 border-2 border-emerald-600 bg-emerald-50 p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
             <div className="overline text-emerald-700">PREMIUM ACTIF</div>
@@ -75,8 +74,7 @@ export default function Dashboard() {
             </p>
           </div>
         </div>
-      );
-    }
+      )}
 
       {!isPremium && trialActive && trialUntil && (
         <div className="mt-10 border-2 border-[#F59E0B] bg-amber-50 p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4" data-testid="dashboard-trial-banner">
