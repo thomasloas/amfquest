@@ -389,7 +389,7 @@ async def create_checkout(payload: CheckoutIn, user=Depends(current_user)):
                 "product_data": {
                     "name": "AMFQUEST Premium - 30 jours",
                 },
-                "unit_amount": int(float(PREMIUM_PRICE_EUR) * 100),
+                "unit_amount": round(float(PREMIUM_PRICE_EUR) * 100),
             },
             "quantity": 1,
         }],
